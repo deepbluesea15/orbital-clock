@@ -1,6 +1,6 @@
-# ORBITAL
+# ORBITAL CLOCK
 
-A twelve-face display toy for the **Waveshare 1.51" transparent OLED** and an
+A fourteen-face display toy for the **Waveshare 1.51" transparent OLED** and an
 **ESP32-S3 SuperMini**. Clocks, weather, and a few things that are just nice to
 look at through a see-through panel.
 
@@ -9,22 +9,25 @@ network and walks you through setup from your phone.
 
 ## Faces
 
-Tap the BOOT button to cycle.
+Tap the BOOT button to cycle. The face you leave it on is remembered across
+power cycles.
 
 | # | Face | What it is |
 |---|------|-----------|
 | 1 | NEON | Big digits with a blinking colon, drifting starfield, 60-second bar, occasional glitch |
 | 2 | DIGITAL | A plain, undecorated clock with seconds. Readable across the room |
 | 3 | RAIN | Falling glyph columns with bright heads, time punched through the middle |
-| 4 | DECRYPT | Digits scramble through random glyphs and lock, like a cipher resolving |
+| 4 | DECRYPT | Digits scramble through random glyphs and lock, framed by live chip telemetry |
 | 5 | WEATHER | Current conditions with an animated icon, high/low, feels-like, wind, humidity |
 | 6 | FORECAST | Five-day strip, one column per day |
-| 7 | ORBIT | Orbital dial — hour, minute and second bodies circling a ringed sun |
-| 8 | TERMINAL | Scrolling ship's log with a live clock and blinking cursor |
-| 9 | FLYOVER | Wireframe terrain scrolling toward you under a crescent moon |
-| 10 | TESSERACT | A rotating 4D hypercube, projected 4D→3D→2D |
-| 11 | JELLYFISH | Drifting jellies with pulsing bells and rising bubbles |
-| 12 | BOUNCE | The screensaver. Counts bounces, and separately corner hits |
+| 7 | MOON | Phase disc with illumination, age, and days to the next full and new moon |
+| 8 | ORRERY | Six planets at their real heliocentric longitudes, on inclined orbit rings |
+| 9 | ORBIT | Orbital dial — hour, minute and second bodies circling a ringed sun |
+| 10 | TERMINAL | Scrolling ship's log with a live clock and blinking cursor |
+| 11 | FLYOVER | Wireframe terrain scrolling toward you under a crescent moon |
+| 12 | TESSERACT | A rotating 4D hypercube, projected 4D→3D→2D |
+| 13 | JELLYFISH | Drifting jellies with pulsing bells and rising bubbles |
+| 14 | BOUNCE | The screensaver. Counts bounces, and separately corner hits |
 
 ## Hardware
 
@@ -57,7 +60,7 @@ of the sketch. Avoid GPIO19/20 (USB), GPIO43/44 (UART0) and GPIO46.
 
 ### Option A — prebuilt binary, nothing to install
 
-1. Grab `orbital_clock_esp32s3_4mb.bin` from the
+1. Grab `OrbitalClockv1.0.bin` from the
    [Releases](../../releases) page.
 2. Open [web.esphome.io](https://web.esphome.io/) or
    [esptool-js](https://espressif.github.io/esptool-js/) in Chrome or Edge.
@@ -77,7 +80,7 @@ Arduino IDE:
 
 1. Install the **esp32** boards package by Espressif (Boards Manager).
 2. Install **U8g2** by oliver (Library Manager).
-3. Open `orbital_clock/orbital_clock.ino`.
+3. Open `OrbitalClock/OrbitalClock.ino`.
 4. Board: **ESP32S3 Dev Module**. Set **USB CDC On Boot: Enabled**.
 5. Upload.
 
@@ -87,13 +90,13 @@ Or with `arduino-cli`:
 arduino-cli core install esp32:esp32
 arduino-cli lib install U8g2
 arduino-cli compile --fqbn esp32:esp32:esp32s3:CDCOnBoot=cdc \
-  --output-dir ./build orbital_clock
+  --output-dir ./build OrbitalClock
 arduino-cli upload -p /dev/ttyACM0 \
   --fqbn esp32:esp32:esp32s3:CDCOnBoot=cdc \
-  --input-dir ./build orbital_clock
+  --input-dir ./build OrbitalClock
 ```
 
-`build/orbital_clock.ino.merged.bin` is the single flash-at-zero image.
+`build/OrbitalClock.ino.merged.bin` is the single flash-at-zero image.
 
 ## First-time setup
 
@@ -159,6 +162,17 @@ most faces are line art rather than filled shapes.
 ## Implementation notes
 
 A few things that were less obvious than they look:
+
+- **The astronomy is real, and the naive version was wrong.** A flat "days
+  since a known new moon" phase model drifts up to 7.6% illumination, enough
+  to name the wrong phase near a quarter; MOON uses the actual Sun-Moon
+  elongation instead and holds inside 1.4%. Treating the planets' orbits as
+  circles puts Mercury 24 degrees from where it really is and Mars 11, so
+  ORRERY adds the equation of center and lands every planet inside 0.7
+  degrees. Both were checked against `ephem` over a four-year span.
+- **The remembered face never writes from the render loop.** NVS is flash and
+  wears out, so a face change arms a 4-second timer; cycling through all
+  fourteen costs one write once you stop.
 
 - **U8g2 coordinates are unsigned.** A negative x wraps to ~65500 and the shape
   vanishes instead of clipping. FLYOVER, TESSERACT and the jellyfish tentacles
