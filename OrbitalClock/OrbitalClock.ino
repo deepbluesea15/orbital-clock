@@ -1,5 +1,5 @@
 /* ============================================================================
-   ORBITAL CLOCK  v1.0
+   ORBITAL CLOCK  v1.1
    A fourteen-face display for the Waveshare 1.51" transparent OLED
    driven by an ESP32-S3 SuperMini.
 
@@ -8,25 +8,31 @@
    FACES (tap BOOT to cycle; the current one is remembered across power cycles)
       1 NEON       big glitching digits over a drifting starfield
       2 DIGITAL    plain clock with seconds, readable across the room
-      3 RAIN       falling glyph columns, time punched through the middle
-      4 DECRYPT    digits scramble and lock, framed by live chip telemetry
-      5 WEATHER    current conditions, animated icon (Open-Meteo, no API key)
-      6 FORECAST   five-day strip
-      7 MOON       phase disc with illumination, age, next full and new
-      8 ORRERY     six planets at their real heliocentric longitudes
-      9 ORBIT      orbital dial, hour/minute/second bodies round a ringed sun
-     10 TERMINAL   scrolling ship's log with a live clock
-     11 FLYOVER    wireframe terrain scrolling past under a crescent moon
-     12 TESSERACT  rotating 4D hypercube, projected 4D->3D->2D
-     13 JELLYFISH  drifting jellies with pulsing bells and bubbles
-     14 BOUNCE     the screensaver, still chasing that corner
+      3 ANALOG     conventional dial, sweeping second hand, outside temp
+      4 FLIPCLOCK  split-flap tiles; only the changed digit flips
+      5 WORDCLOCK  the time spelled out of a lit letter grid
+      6 RAIN       falling glyph columns, time punched through the middle
+      7 DECRYPT    digits scramble and lock, framed by live chip telemetry
+      8 WEATHER    current conditions, animated icon (Open-Meteo, no API key)
+      9 FORECAST   five-day strip
+     10 MOON       phase disc with illumination, age, next full and new
+     11 SOLAR      sun's real position on the sky arc, sunrise/sunset, daylight
+     12 ORRERY     six planets at their real heliocentric longitudes
+     13 ORBIT      orbital dial, hour/minute/second bodies round a ringed sun
+     14 TERMINAL   scrolling ship's log with a live clock
+     15 FLYOVER    wireframe terrain scrolling past under a crescent moon
+     16 TESSERACT  rotating 4D hypercube, projected 4D->3D->2D
+     17 JELLYFISH  drifting jellies with pulsing bells and bubbles
+     18 BOUNCE     the screensaver, now carrying the time
 
    BOOT BUTTON  tap = next face | hold 0.8s = 12/24h | hold 8s = factory reset
+                The 12/24 choice is remembered, and can also be set in setup.
 
    FIRST BOOT
      The clock opens an open Wi-Fi network called ORBITAL-xxxx and shows the
      join instructions on screen. Connect a phone, the setup page appears (or
-     browse to 192.168.4.1), enter your network and city, save. Settings live
+     browse to 192.168.4.1), enter your network, city and preferred units
+     (Celsius/km-h or Fahrenheit/mph), then save. Settings live
      in NVS. To erase them: hold BOOT for 8 seconds while running, or hold it
      while powering on.
 
@@ -57,11 +63,11 @@
 // about your network and location is entered once through the setup portal and
 // kept in NVS. Hold BOOT while powering on to wipe it and start over.
 
-#define FW_VERSION  "v1.0"
+#define FW_VERSION  "v1.1"
 #define CALLSIGN    "NX-01"
 #define AP_PREFIX   "ORBITAL-"
 
-static bool use24h = false;
+static bool use24h = false;          // loaded from NVS at boot, see cfgLoad
 static const uint32_t FACE_AUTO_MS = 0;      // ms per face, 0 = button only
 static const uint8_t  BRIGHT_DAY   = 255;
 static const uint8_t  BRIGHT_NIGHT = 30;
@@ -83,16 +89,21 @@ static const int W = 128, H = 64;
 static const uint16_t FRAME_MS = 40;
 
 enum Face : uint8_t {
-  FACE_NEON = 0, FACE_DIGITAL, FACE_RAIN, FACE_DECRYPT, FACE_WEATHER, FACE_FORECAST,
-  FACE_MOON, FACE_ORRERY,
+  FACE_NEON = 0, FACE_DIGITAL, FACE_ANALOG, FACE_FLIP, FACE_WORD,
+  FACE_RAIN, FACE_DECRYPT,
+  FACE_WEATHER, FACE_FORECAST,
+  FACE_MOON, FACE_SOLAR, FACE_ORRERY,
   FACE_ORBIT, FACE_TERMINAL,
   FACE_FLYOVER, FACE_TESSERACT, FACE_JELLY, FACE_BOUNCE,
   FACE_COUNT
 };
 static const char *FACE_NAMES[FACE_COUNT] = {
-  "NEON", "DIGITAL", "RAIN", "DECRYPT", "WEATHER", "FORECAST",
-  "MOON", "ORRERY",
-  "ORBIT", "TERMINAL", "FLYOVER", "TESSERACT", "JELLYFISH", "BOUNCE"
+  "NEON", "DIGITAL", "ANALOG", "FLIPCLOCK", "WORDCLOCK",
+  "RAIN", "DECRYPT",
+  "WEATHER", "FORECAST",
+  "MOON", "SOLAR", "ORRERY",
+  "ORBIT", "TERMINAL",
+  "FLYOVER", "TESSERACT", "JELLYFISH", "BOUNCE"
 };
 static uint8_t face = FACE_NEON;
 static uint32_t labelUntil = 0;
@@ -114,6 +125,7 @@ struct Cfg {
   String ssid, pass, city, tz;
   float  lat = 0, lon = 0;
   bool   haveLoc = false;
+  bool   metric  = true;      // true = C and km/h, false = F and mph
 } cfg;
 
 static Preferences prefs;
@@ -127,6 +139,8 @@ static void cfgLoad() {
   cfg.lat     = prefs.getFloat("lat", 0);
   cfg.lon     = prefs.getFloat("lon", 0);
   cfg.haveLoc = prefs.getBool("hasloc", false);
+  cfg.metric  = prefs.getBool("metric", true);
+  use24h      = prefs.getBool("use24h", false);
   uint8_t f   = prefs.getUChar("face", 0);
   prefs.end();
   // Guard the index: a firmware update can change how many faces exist, and a
@@ -138,23 +152,31 @@ static void cfgLoad() {
 // A change arms a timer; mashing the button through every face still costs
 // one write, a few seconds after you stop.
 static uint8_t  faceStored  = 255;
+static uint8_t  h24Stored   = 255;       // 255 = not yet read back
 static uint32_t faceFlushAt = 0;
 
 static void facePersistTick() {
   if (!faceFlushAt || millis() < faceFlushAt) return;
   faceFlushAt = 0;
-  if (face == faceStored) return;
+  bool needFace = (face != faceStored);
+  bool needH24  = ((uint8_t)use24h != h24Stored);
+  if (!needFace && !needH24) return;
   prefs.begin("orbital", false);
-  prefs.putUChar("face", face);
+  if (needFace) prefs.putUChar("face", face);
+  if (needH24)  prefs.putBool("use24h", use24h);
   prefs.end();
   faceStored = face;
+  h24Stored  = (uint8_t)use24h;
 }
-static void cfgSaveNet(const String &ss, const String &pw, const String &ct, const String &tz) {
+static void cfgSaveNet(const String &ss, const String &pw, const String &ct,
+                       const String &tz, bool metric, bool h24) {
   prefs.begin("orbital", false);
   prefs.putString("ssid", ss);
   prefs.putString("pass", pw);
   prefs.putString("city", ct);
   prefs.putString("tz", tz);
+  prefs.putBool("metric", metric);
+  prefs.putBool("use24h", h24);
   prefs.putBool("hasloc", false);        // force a fresh geocode
   prefs.end();
 }
@@ -308,6 +330,14 @@ static void handleRoot() {
          "<input name=city placeholder='e.g. New York, NY' autocapitalize=words>"
          "<div class=n>Looked up after the clock joins your network. "
          "Add a state or country if the name is ambiguous.</div>"
+         "<label>Clock</label><select name=clock>"
+         "<option value=12 selected>12-hour (3:05 PM)</option>"
+         "<option value=24>24-hour (15:05)</option>"
+         "</select>"
+         "<label>Units</label><select name=units>"
+         "<option value=c selected>Celsius &middot; km/h</option>"
+         "<option value=f>Fahrenheit &middot; mph</option>"
+         "</select>"
          "<label>Time zone</label><select name=tz>"
          "<option value=auto selected>Automatic (from city)</option>");
   for (int i = 0; i < TZ_N; i++) {
@@ -324,6 +354,8 @@ static void handleSave() {
   String pw = portal.arg("pass");
   String ct = portal.arg("city"); ct.trim();
   String tz = portal.arg("tz");
+  bool metric = (portal.arg("units") != "f");
+  bool h24    = (portal.arg("clock") == "24");
 
   if (!ss.length()) {
     portal.send(200, "text/html",
@@ -331,7 +363,7 @@ static void handleSave() {
         "<h2>Pick a network first</h2><a style='color:#5ef0bd' href='/'>Go back</a></body>"));
     return;
   }
-  cfgSaveNet(ss, pw, ct, tz);
+  cfgSaveNet(ss, pw, ct, tz, metric, h24);
   portal.send(200, "text/html",
     F("<body style='background:#0b0e13;color:#dff6ea;font-family:system-ui;padding:24px'>"
       "<h2 style='color:#5ef0bd'>Saved</h2><p>The clock is restarting and will join "
@@ -619,7 +651,10 @@ static void wxFetch() {
                "is_day,weather_code,wind_speed_10m"
                "&daily=weather_code,temperature_2m_max,temperature_2m_min"
                "&timezone=auto&forecast_days=5"
-               "&temperature_unit=fahrenheit&wind_speed_unit=mph";
+               // Units are stated outright rather than leaning on the API's
+               // defaults, so metric mode can't silently change under us.
+             + String(cfg.metric ? "&temperature_unit=celsius&wind_speed_unit=kmh"
+                                 : "&temperature_unit=fahrenheit&wind_speed_unit=mph");
 
   HTTPClient http;
   http.setTimeout(9000);
@@ -997,19 +1032,37 @@ static float bx = 20, by = 20, bvx = 1.15f, bvy = 0.78f;
 static uint16_t bHits = 0, bCorners = 0;
 
 static void faceBounce() {
-  const int bw = 36, bh = 15;
+  // The time rides in the box. The box is sized to the widest possible string
+  // and the digits centred inside it: measuring the live string instead would
+  // resize the box when 9 o'clock becomes 10, which can shove it through a
+  // wall and score a bounce that never happened.
+  char t[12];
+  int hr = use24h ? tnow.tm_hour : hour12(tnow.tm_hour);
+  snprintf(t, sizeof(t), use24h ? "%02d:%02d:%02d" : "%d:%02d:%02d",
+           hr, tnow.tm_min, tnow.tm_sec);
+
+  u8g2.setFont(u8g2_font_6x12_tf);
+  const int bw = u8g2.getStrWidth("00:00:00") + 13;
+  const int bh = 18;
+  const int tx = (bw - u8g2.getStrWidth(t)) / 2;
+
   bx += bvx; by += bvy;
   bool hx = false, hy = false;
-  if (bx < 0)          { bx = 0;          bvx = -bvx; hx = true; }
-  if (bx > W - bw)     { bx = W - bw;     bvx = -bvx; hx = true; }
-  if (by < 0)          { by = 0;          bvy = -bvy; hy = true; }
-  if (by > H - bh)     { by = H - bh;     bvy = -bvy; hy = true; }
+  if (bx < 0)      { bx = 0;      bvx = -bvx; hx = true; }
+  if (bx > W - bw) { bx = W - bw; bvx = -bvx; hx = true; }
+  if (by < 0)      { by = 0;      bvy = -bvy; hy = true; }
+  if (by > H - bh) { by = H - bh; bvy = -bvy; hy = true; }
   if (hx || hy) bHits++;
   if (hx && hy) bCorners++;
 
-  u8g2.drawRFrame((int)bx, (int)by, bw, bh, 3);
-  u8g2.setFont(u8g2_font_5x7_tf);
-  u8g2.drawStr((int)bx + 6, (int)by + 10, "ESP32");
+  u8g2.drawRFrame((int)bx, (int)by, bw, bh, 4);
+  u8g2.drawStr((int)bx + tx, (int)by + 13, t);
+
+  // AM/PM tucked under the box, only when it would mean something
+  if (!use24h) {
+    u8g2.setFont(u8g2_font_4x6_tr);
+    u8g2.drawStr((int)bx + bw - 12, (int)by + bh - 1, tnow.tm_hour < 12 ? "AM" : "PM");
+  }
 
   char b[28];
   snprintf(b, sizeof(b), "HITS %u   CORNERS %u", bHits, bCorners);
@@ -1152,7 +1205,8 @@ static void faceDecrypt() {
 
   char buf[26];
   u8g2.setFont(u8g2_font_4x6_tr);
-  snprintf(buf, sizeof(buf), "CORE %.0fC", coreC);
+  snprintf(buf, sizeof(buf), "CORE %.0f%c",
+           cfg.metric ? coreC : coreC * 1.8f + 32.0f, cfg.metric ? 'C' : 'F');
   dStr(0, 7, buf);
   snprintf(buf, sizeof(buf), "HEAP %uK", (unsigned)(ESP.getFreeHeap() / 1024));
   dStrRight(W, 7, buf);
@@ -1313,7 +1367,9 @@ static void faceWeather() {
   u8g2.setFont(u8g2_font_logisoso20_tn);
   dStr(50, 36, buf);
   int tw = strW(buf);
-  dCircle(50 + tw + 4, 20, 2);
+  dCircle(50 + tw + 4, 20, 2);                 // degree mark
+  u8g2.setFont(u8g2_font_5x7_tf);
+  dStr(50 + tw + 8, 24, cfg.metric ? "C" : "F");
 
   u8g2.setFont(u8g2_font_5x7_tf);
   dStr(50, 47, wxLabel(wthr.code));
@@ -1323,7 +1379,8 @@ static void faceWeather() {
   dStr(0, 62, buf);
   snprintf(buf, sizeof(buf), "FEELS %d", (int)lroundf(wthr.feelF));
   dStr(44, 62, buf);
-  snprintf(buf, sizeof(buf), "%dMPH %d%%", (int)lroundf(wthr.wind), (int)lroundf(wthr.hum));
+  snprintf(buf, sizeof(buf), "%d%s %d%%", (int)lroundf(wthr.wind),
+           cfg.metric ? "KMH" : "MPH", (int)lroundf(wthr.hum));
   dStrRight(W, 62, buf);
 }
 
@@ -1377,7 +1434,7 @@ static void wxIconSmall(uint8_t ic, int cx, int cy) {
 static void faceForecast() {
   char buf[24];
   u8g2.setFont(u8g2_font_5x7_tf);
-  dStr(0, 8, "5-DAY");
+  dStr(0, 8, cfg.metric ? "5-DAY  C" : "5-DAY  F");
   dStrRight(W, 8, cityLabel());
   dDashed(0, 11, W);
 
@@ -1561,11 +1618,340 @@ static void faceOrrery() {
   dStr(0, 63, buf);
 }
 
+// ------------------------- FACE: ANALOG -------------------------------------
+static void faceAnalog() {
+  char buf[20];
+  const int cx = 32, cy = 32, R = 29;
+
+  dCircle(cx, cy, R);
+  for (int i = 0; i < 60; i++) {
+    float a = (i * 6 - 90) * 0.01745329f;
+    if (i % 5 == 0)
+      cline((int)(cx + (R - 5) * cosf(a)), (int)(cy + (R - 5) * sinf(a)),
+            (int)(cx + (R - 2) * cosf(a)), (int)(cy + (R - 2) * sinf(a)));
+    else
+      dPixel((int)(cx + (R - 3) * cosf(a)), (int)(cy + (R - 3) * sinf(a)));
+  }
+
+  float secF  = tnow.tm_sec + subSecond();
+  float minF  = tnow.tm_min + secF / 60.0f;
+  float hourF = (tnow.tm_hour % 12) + minF / 60.0f;
+  float ah = (hourF * 30.0f - 90.0f) * 0.01745329f;
+  float am = (minF * 6.0f - 90.0f) * 0.01745329f;
+  float as = (secF * 6.0f - 90.0f) * 0.01745329f;
+
+  // Tapered hands: a plain line at this size reads as a scratch, and a thick
+  // one swallows the dial. A narrow triangle gives it a direction.
+  for (int k = 0; k < 2; k++) {
+    float a  = k ? am : ah;
+    float ln = k ? 23.0f : 15.0f;
+    float wd = k ? 2.0f : 3.0f;
+    int tx = (int)(cx + ln * cosf(a)), ty = (int)(cy + ln * sinf(a));
+    int px = (int)(-sinf(a) * wd),     py = (int)(cosf(a) * wd);
+    u8g2.drawTriangle(tx + gOfsX, ty + gOfsY,
+                      cx + px + gOfsX, cy + py + gOfsY,
+                      cx - px + gOfsX, cy - py + gOfsY);
+  }
+  cline((int)(cx - 5 * cosf(as)), (int)(cy - 5 * sinf(as)),
+        (int)(cx + (R - 4) * cosf(as)), (int)(cy + (R - 4) * sinf(as)));
+  dDisc(cx, cy, 2);
+
+  dVLine(66, 3, 58);
+  u8g2.setFont(u8g2_font_4x6_tr);
+  snprintf(buf, sizeof(buf), "%s %02d %s", DOW[tnow.tm_wday % 7],
+           tnow.tm_mday, MON[tnow.tm_mon % 12]);
+  dStr(71, 10, buf);
+
+  int h = use24h ? tnow.tm_hour : hour12(tnow.tm_hour);
+  snprintf(buf, sizeof(buf), "%d:%02d", h, tnow.tm_min);
+  u8g2.setFont(u8g2_font_logisoso16_tn);
+  dStr(71, 34, buf);
+
+  u8g2.setFont(u8g2_font_5x7_tf);
+  snprintf(buf, sizeof(buf), ":%02d%s", tnow.tm_sec,
+           use24h ? "" : (tnow.tm_hour < 12 ? " AM" : " PM"));
+  dStr(71, 46, buf);
+
+  u8g2.setFont(u8g2_font_4x6_tr);
+  if (wthr.valid) snprintf(buf, sizeof(buf), "%d%c OUT",
+                           (int)lroundf(wthr.tempF), cfg.metric ? 'C' : 'F');
+  else            snprintf(buf, sizeof(buf), "-- OUT");
+  dStr(71, 58, buf);
+}
+
+// ------------------------- FACE: FLIPCLOCK ----------------------------------
+// Split-flap. Each tile remembers the digit it was showing and the moment it
+// changed; only that tile animates, so the seconds churn while the hour tile
+// sits still for an hour.
+static const uint16_t FLIP_MS = 320;
+static uint8_t  flipPrev[4] = { 99, 99, 99, 99 };
+static uint32_t flipAt[4]   = { 0, 0, 0, 0 };
+
+static void flipTile(int x, int y, int w, int h, char now_c, char old_c, float t) {
+  if (now_c == ' ' && (t >= 1.0f || old_c == ' ')) return;   // no leading-zero tile
+  const int hinge = y + h / 2;
+  u8g2.drawRFrame(x + gOfsX, y + gOfsY, w, h, 3);
+
+  u8g2.setFont(u8g2_font_logisoso28_tn);
+  char one[2] = { 0, 0 };
+  int base = y + h - 7;
+
+  if (t >= 1.0f) {                                  // settled
+    one[0] = now_c;
+    dStr(x + (w - strW(one)) / 2, base, one);
+  } else {
+    // Top half already shows the new digit; the bottom still shows the old
+    // one until the falling leaf lands over it.
+    one[0] = now_c;
+    int nx = x + (w - strW(one)) / 2;
+    u8g2.setClipWindow(x + 1 + gOfsX, y + 1 + gOfsY, x + w - 1 + gOfsX, hinge + gOfsY);
+    dStr(nx, base, one);
+    u8g2.setMaxClipWindow();
+
+    one[0] = old_c;
+    int ox = x + (w - strW(one)) / 2;
+    u8g2.setClipWindow(x + 1 + gOfsX, hinge + 1 + gOfsY, x + w - 1 + gOfsX, y + h - 1 + gOfsY);
+    dStr(ox, base, one);
+    u8g2.setMaxClipWindow();
+
+    // The leaf: first half it is the old top folding down, second half the new
+    // bottom swinging up. Height tracks the cosine so it eases at the edges.
+    int halfH = h / 2 - 1;
+    int lh;
+    char lc;
+    if (t < 0.5f) { lh = (int)(halfH * cosf(t * 2.0f * 1.5708f));        lc = old_c; }
+    else          { lh = (int)(halfH * cosf((1.0f - t) * 2.0f * 1.5708f)); lc = now_c; }
+    if (lh > 0) {
+      int ly0 = (t < 0.5f) ? (hinge - lh) : (hinge + 1);
+      int ly1 = (t < 0.5f) ? hinge        : (hinge + lh);
+      u8g2.setDrawColor(0);
+      dBox(x + 1, ly0, w - 2, ly1 - ly0 + 1);
+      u8g2.setDrawColor(1);
+      dFrame(x, ly0, w, ly1 - ly0 + 1);
+      one[0] = lc;
+      int lx = x + (w - strW(one)) / 2;
+      u8g2.setClipWindow(x + 2 + gOfsX, ly0 + 1 + gOfsY, x + w - 2 + gOfsX, ly1 - 1 + gOfsY);
+      // Both leaves draw their digit at the resting baseline and let the band
+      // do the cutting: the falling leaf then peels the old top away, and the
+      // landing one reveals the new bottom exactly where it will come to rest.
+      dStr(lx, base, one);
+      u8g2.setMaxClipWindow();
+    }
+  }
+  u8g2.drawHLine(x + 1 + gOfsX, hinge + gOfsY, w - 2);
+}
+
+static void faceFlipclock() {
+  char buf[20];
+  uint32_t now = millis();
+  int hr = use24h ? tnow.tm_hour : hour12(tnow.tm_hour);
+  char d[4] = { (char)('0' + hr / 10), (char)('0' + hr % 10),
+                (char)('0' + tnow.tm_min / 10), (char)('0' + tnow.tm_min % 10) };
+  if (!use24h && hr < 10) d[0] = ' ';          // no leading zero in 12-hour
+
+  for (int i = 0; i < 4; i++) {
+    if (flipPrev[i] == 99) flipPrev[i] = d[i];
+    if (d[i] != flipPrev[i] && flipAt[i] == 0) flipAt[i] = now;
+  }
+
+  u8g2.setFont(u8g2_font_4x6_tr);
+  snprintf(buf, sizeof(buf), "%s %02d %s", DOW[tnow.tm_wday % 7],
+           tnow.tm_mday, MON[tnow.tm_mon % 12]);
+  dStr(0, 6, buf);
+  if (wthr.valid) snprintf(buf, sizeof(buf), "%d%c", (int)lroundf(wthr.tempF),
+                           cfg.metric ? 'C' : 'F');
+  else            snprintf(buf, sizeof(buf), "--");
+  dStrRight(W - 2, 6, buf);
+
+  const int tw = 26, th = 44, ty = 11;
+  const int xs[4] = { 4, 33, 69, 98 };
+  for (int i = 0; i < 4; i++) {
+    float t = 1.0f;
+    if (flipAt[i]) {
+      t = (float)(now - flipAt[i]) / (float)FLIP_MS;
+      if (t >= 1.0f) { t = 1.0f; flipAt[i] = 0; flipPrev[i] = d[i]; }
+    }
+    flipTile(xs[i], ty, tw, th, d[i], flipPrev[i], t);
+  }
+  if (subSecond() < 0.6f) {                     // colon blinks with the second
+    dBox(62, 24, 3, 3);
+    dBox(62, 40, 3, 3);
+  }
+}
+
+// ------------------------- FACE: WORDCLOCK ----------------------------------
+// 14 x 8 letter grid. Unlit cells fall back to a single dot so the grid is
+// implied without competing with the sentence.
+static const char *WC_GRID[8] = {
+  "ITLISXHALFXTEN",
+  "QUARTERXTWENTY",
+  "FIVEMINUTESXTO",
+  "PASTXONEXTWOXX",
+  "THREEFOURXFIVE",
+  "SIXSEVENXEIGHT",
+  "NINETENXELEVEN",
+  "TWELVEXOCLOCKX",
+};
+struct WcSpan { uint8_t r, c0, c1; };
+static const WcSpan WC_HOUR[12] = {
+  {3, 5, 8}, {3, 9, 12}, {4, 0, 5}, {4, 5, 9}, {4, 10, 14}, {5, 0, 3},
+  {5, 3, 8}, {5, 9, 14}, {6, 0, 4}, {6, 4, 7}, {6, 8, 14}, {7, 0, 6},
+};
+static const WcSpan WC_IT = {0, 0, 2}, WC_IS = {0, 3, 5};
+static const WcSpan WC_FIVE = {2, 0, 4},  WC_TEN  = {0, 11, 14};
+static const WcSpan WC_QTR  = {1, 0, 7},  WC_TWTY = {1, 8, 14};
+static const WcSpan WC_HALF = {0, 6, 10}, WC_MINS = {2, 4, 11};
+static const WcSpan WC_PAST = {3, 0, 4},  WC_TO   = {2, 12, 14};
+static const WcSpan WC_OCLK = {7, 7, 13};
+
+static void faceWordclock() {
+  WcSpan lit[7];
+  uint8_t n = 0;
+  lit[n++] = WC_IT;
+  lit[n++] = WC_IS;
+
+  int m5 = ((tnow.tm_min + 2) / 5) * 5;        // nearest five minutes
+  int hr = tnow.tm_hour;
+  if (m5 >= 60) { m5 = 0; hr++; }
+  if (m5 > 30) hr++;                            // past the half, name the next hour
+  int hIdx = ((hr % 12) + 11) % 12;             // 0 -> TWELVE
+
+  int mm = (m5 > 30) ? 60 - m5 : m5;
+  bool useMins = (mm == 5 || mm == 10 || mm == 20 || mm == 25);
+  switch (mm) {
+    case 0:  break;
+    case 5:  lit[n++] = WC_FIVE; break;
+    case 10: lit[n++] = WC_TEN;  break;
+    case 15: lit[n++] = WC_QTR;  break;
+    case 20: lit[n++] = WC_TWTY; break;
+    case 25: lit[n++] = WC_TWTY; lit[n++] = WC_FIVE; break;
+    case 30: lit[n++] = WC_HALF; break;
+  }
+  if (useMins) lit[n++] = WC_MINS;
+  if (mm != 0) lit[n++] = (m5 > 30) ? WC_TO : WC_PAST;
+  lit[n++] = WC_HOUR[hIdx];
+  if (mm == 0) lit[n++] = WC_OCLK;
+
+  u8g2.setFont(u8g2_font_5x7_tf);
+  char one[2] = { 0, 0 };
+  for (int r = 0; r < 8; r++) {
+    for (int c = 0; c < 14; c++) {
+      bool on = false;
+      for (uint8_t k = 0; k < n; k++)
+        if (lit[k].r == r && c >= lit[k].c0 && c < lit[k].c1) { on = true; break; }
+      int x = 2 + c * 9, y = 7 + r * 8;
+      if (on) { one[0] = WC_GRID[r][c]; dStr(x, y, one); }
+      else    dPixel(x + 2, y - 3);
+    }
+  }
+}
+
+// ------------------------- FACE: SOLAR --------------------------------------
+// Sunrise and sunset from the NOAA low-precision equations, using the lat/lon
+// already stored for weather. Good to about a minute, which is finer than the
+// arc can show anyway.
+static bool sunTimes(double lat, double lon, time_t when, time_t *rise, time_t *set) {
+  const double D2R = 0.01745329251994;
+  double jd = (double)when / 86400.0 + 2440587.5;
+  double n  = floor(jd - 2451545.0 + 0.0008 + 0.5);
+  double Js = n - lon / 360.0;
+  double M  = fmod(357.5291 + 0.98560028 * Js, 360.0);
+  double Mr = M * D2R;
+  double C  = 1.9148 * sin(Mr) + 0.0200 * sin(2 * Mr) + 0.0003 * sin(3 * Mr);
+  double lam = fmod(M + C + 180.0 + 102.9372, 360.0);
+  double lamr = lam * D2R;
+  double Jtr = 2451545.0 + Js + 0.0053 * sin(Mr) - 0.0069 * sin(2 * lamr);
+  double sinDec = sin(lamr) * sin(23.44 * D2R);
+  double dec = asin(sinDec);
+  double cosW = (sin(-0.833 * D2R) - sin(lat * D2R) * sinDec)
+              / (cos(lat * D2R) * cos(dec));
+  if (cosW > 1.0 || cosW < -1.0) return false;      // polar day or polar night
+  double w = acos(cosW) / D2R;
+  *rise = (time_t)((Jtr - w / 360.0 - 2440587.5) * 86400.0);
+  *set  = (time_t)((Jtr + w / 360.0 - 2440587.5) * 86400.0);
+  return true;
+}
+
+static void faceSolar() {
+  char buf[26];
+  u8g2.setFont(u8g2_font_4x6_tr);
+  dStr(0, 6, "SOLAR");
+  dStrRight(W, 6, cityLabel());
+  dDashed(0, 9, W);
+
+  if (!cfg.haveLoc) {
+    u8g2.setFont(u8g2_font_6x10_tf);
+    const char *m = "NO LOCATION SET";
+    dStr((W - strW(m)) / 2, 36, m);
+    return;
+  }
+
+  time_t nowT = time(nullptr), rise, set;
+  bool ok = sunTimes(cfg.lat, cfg.lon, nowT, &rise, &set);
+
+  const int cx = 64, cy = 54, rx = 56, ry = 22;
+  for (int a = 180; a <= 360; a += 3) {
+    float r = a * 0.01745329f;
+    dPixel(cx + (int)(rx * cosf(r)), cy + (int)(ry * sinf(r)));
+  }
+  dHLine(2, 54, 124);
+
+  if (!ok) {                                     // sun never rises or never sets
+    u8g2.setFont(u8g2_font_6x10_tf);
+    const char *m = (cfg.lat > 0) == (tnow.tm_mon >= 3 && tnow.tm_mon <= 8)
+                    ? "MIDNIGHT SUN" : "POLAR NIGHT";
+    dStr((W - strW(m)) / 2, 36, m);
+    return;
+  }
+
+  double frac = (double)(nowT - rise) / (double)(set - rise);
+  bool day = (frac >= 0.0 && frac <= 1.0);
+  if (frac < 0) frac = 0; if (frac > 1) frac = 1;
+
+  float a = (180.0f + 180.0f * (float)frac) * 0.01745329f;
+  int sx = cx + (int)(rx * cosf(a)), sy = cy + (int)(ry * sinf(a));
+  if (day) {
+    dDisc(sx, sy, 3);
+    for (int i = 0; i < 8; i++) {
+      float t = i * 0.785398f;
+      cline(sx + (int)(5 * cosf(t)), sy + (int)(5 * sinf(t)),
+            sx + (int)(7 * cosf(t)), sy + (int)(7 * sinf(t)));
+    }
+    for (int y = sy + 9; y < 54; y += 3) dPixel(sx, y);
+  } else {
+    dCircle(sx, sy, 3);                          // below the horizon: hollow
+  }
+
+  struct tm rt, st;
+  localtime_r(&rise, &rt);
+  localtime_r(&set, &st);
+  int rh = use24h ? rt.tm_hour : hour12(rt.tm_hour);
+  int sh = use24h ? st.tm_hour : hour12(st.tm_hour);
+
+  long until = day ? (long)(set - nowT) : (long)(rise - nowT);
+  if (until < 0) until += 86400;                 // after sunset: tomorrow's rise
+  u8g2.setFont(u8g2_font_6x10_tf);
+  snprintf(buf, sizeof(buf), day ? "SETS IN %ld:%02ld" : "RISES IN %ld:%02ld",
+           until / 3600, (until / 60) % 60);
+  dStr((W - strW(buf)) / 2, 21, buf);
+
+  long dayLen = (long)(set - rise);
+  u8g2.setFont(u8g2_font_5x7_tf);
+  snprintf(buf, sizeof(buf), "%d:%02d", rh, rt.tm_min);
+  dStr(1, 62, buf);
+  snprintf(buf, sizeof(buf), "DAY %ld:%02ld", dayLen / 3600, (dayLen / 60) % 60);
+  dStr((W - strW(buf)) / 2, 62, buf);
+  snprintf(buf, sizeof(buf), "%d:%02d", sh, st.tm_min);
+  dStrRight(W - 1, 62, buf);
+}
+
 // ------------------------- FACE LABEL ---------------------------------------
+static bool fmtFlash = false;            // label shows the clock mode, not the face
+
 static void drawFaceLabel() {
   if (millis() > labelUntil) return;
   u8g2.setFont(u8g2_font_4x6_tr);
-  const char *n = FACE_NAMES[face];
+  const char *n = fmtFlash ? (use24h ? "24-HOUR" : "12-HOUR") : FACE_NAMES[face];
   int w = u8g2.getStrWidth(n);
   int x = (W - w) / 2;
   u8g2.setDrawColor(0); u8g2.drawBox(x - 4, 51, w + 8, 11);
@@ -1575,6 +1961,7 @@ static void drawFaceLabel() {
 
 // ------------------------- BUTTON -------------------------------------------
 static void nextFace() {
+  fmtFlash = false;
   face = (face + 1) % FACE_COUNT;
   lastFaceSw = millis();
   labelUntil = millis() + 1000;
@@ -1615,7 +2002,13 @@ static void handleButton() {
   if (pressed && !btnDown) { btnDown = true; btnDownAt = millis(); longFired = false; }
   else if (pressed && btnDown) {
     uint32_t held = millis() - btnDownAt;
-    if (!longFired && held > HOLD_FORMAT_MS) { longFired = true; use24h = !use24h; }
+    if (!longFired && held > HOLD_FORMAT_MS) {
+      longFired = true;
+      use24h = !use24h;
+      fmtFlash = true;
+      labelUntil = millis() + 1200;          // flash the new mode so it is visible
+      faceFlushAt = millis() + 4000;         // and remember it, debounced
+    }
     if (held >= HOLD_RESET_MS) factoryReset();      // does not return
   }
   else if (!pressed && btnDown) {
@@ -1777,11 +2170,15 @@ void loop() {
   switch (face) {
     case FACE_NEON:      starsDraw(H);  faceNeon();      break;
     case FACE_DIGITAL:                  faceDigital();   break;
+    case FACE_ANALOG:                   faceAnalog();    break;
+    case FACE_FLIP:                     faceFlipclock(); break;
+    case FACE_WORD:                     faceWordclock(); break;
     case FACE_RAIN:                     faceRain();      break;
     case FACE_DECRYPT:                  faceDecrypt();   break;
     case FACE_WEATHER:                  faceWeather();   break;
     case FACE_FORECAST:                 faceForecast();  break;
     case FACE_MOON:                     faceMoon();      break;
+    case FACE_SOLAR:                    faceSolar();     break;
     case FACE_ORRERY:    starsDraw(H);  faceOrrery();    break;
     case FACE_ORBIT:     starsDraw(H);  faceOrbit();     break;
     case FACE_TERMINAL:                 faceTerminal();  break;
