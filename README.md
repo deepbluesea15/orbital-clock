@@ -1,6 +1,6 @@
 # ORBITAL CLOCK
 
-A fourteen-face display toy for the **Waveshare 1.51" transparent OLED** and an
+An eighteen-face display toy for the **Waveshare 1.51" transparent OLED** and an
 **ESP32-S3 SuperMini**. Clocks, weather, and a few things that are just nice to
 look at through a see-through panel.
 
@@ -16,18 +16,22 @@ power cycles.
 |---|------|-----------|
 | 1 | NEON | Big digits with a blinking colon, drifting starfield, 60-second bar, occasional glitch |
 | 2 | DIGITAL | A plain, undecorated clock with seconds. Readable across the room |
-| 3 | RAIN | Falling glyph columns with bright heads, time punched through the middle |
-| 4 | DECRYPT | Digits scramble through random glyphs and lock, framed by live chip telemetry |
-| 5 | WEATHER | Current conditions with an animated icon, high/low, feels-like, wind, humidity |
-| 6 | FORECAST | Five-day strip, one column per day |
-| 7 | MOON | Phase disc with illumination, age, and days to the next full and new moon |
-| 8 | ORRERY | Six planets at their real heliocentric longitudes, on inclined orbit rings |
-| 9 | ORBIT | Orbital dial — hour, minute and second bodies circling a ringed sun |
-| 10 | TERMINAL | Scrolling ship's log with a live clock and blinking cursor |
-| 11 | FLYOVER | Wireframe terrain scrolling toward you under a crescent moon |
-| 12 | TESSERACT | A rotating 4D hypercube, projected 4D→3D→2D |
-| 13 | JELLYFISH | Drifting jellies with pulsing bells and rising bubbles |
-| 14 | BOUNCE | The screensaver. Counts bounces, and separately corner hits |
+| 3 | ANALOG | Conventional dial with a sweeping second hand, plus date and outside temperature |
+| 4 | FLIPCLOCK | Split-flap tiles. Only the digit that changed flips, so seconds churn while the hour sits still |
+| 5 | WORDCLOCK | The time spelled out of a lit letter grid — IT IS TEN PAST TEN |
+| 6 | RAIN | Falling glyph columns with bright heads, time punched through the middle |
+| 7 | DECRYPT | Digits scramble through random glyphs and lock, framed by live chip telemetry |
+| 8 | WEATHER | Current conditions with an animated icon, high/low, feels-like, wind, humidity |
+| 9 | FORECAST | Five-day strip, one column per day |
+| 10 | MOON | Phase disc with illumination, age, and days to the next full and new moon |
+| 11 | SOLAR | The sun's real position on an arc of the sky, sunrise and sunset, day length |
+| 12 | ORRERY | Six planets at their real heliocentric longitudes, on inclined orbit rings |
+| 13 | ORBIT | Orbital dial — hour, minute and second bodies circling a ringed sun |
+| 14 | TERMINAL | Scrolling ship's log with a live clock and blinking cursor |
+| 15 | FLYOVER | Wireframe terrain scrolling toward you under a crescent moon |
+| 16 | TESSERACT | A rotating 4D hypercube, projected 4D→3D→2D |
+| 17 | JELLYFISH | Drifting jellies with pulsing bells and rising bubbles |
+| 18 | BOUNCE | The screensaver, carrying the time. Counts bounces, and separately corner hits |
 
 ## Hardware
 
@@ -113,8 +117,9 @@ On first boot the screen shows:
 ```
 
 Join that network from a phone. The setup page usually opens by itself; if not,
-browse to `192.168.4.1`. Enter your Wi-Fi network, its password, and a city, then
-save. The clock restarts and joins your network.
+browse to `192.168.4.1`. Enter your Wi-Fi network, its password, a city, whether
+you want a 12- or 24-hour clock, and Celsius/km-h or Fahrenheit/mph. Save, and
+the clock restarts and joins your network.
 
 The network name ends in the last two bytes of your board's MAC, so it's unique
 to your device.
@@ -128,7 +133,7 @@ is running.
 | Action | Effect |
 |---|---|
 | Tap BOOT | Next face |
-| Hold 0.8s | Toggle 12/24 hour |
+| Hold 0.8s | Toggle 12/24 hour (remembered, and the label flashes to confirm) |
 | Hold 8s | Erase Wi-Fi and location, reboot into setup |
 | Hold while powering on | Same erase, for when the firmware is wedged |
 
@@ -146,6 +151,15 @@ Let go before it reaches zero and nothing changes.
   rule strings and maps the IANA name onto it. DST transitions then happen on
   their own rather than being frozen at the offset that was true on setup day.
   If your city is ambiguous, pick the zone from the dropdown instead.
+
+- **Units** are chosen during setup and default to Celsius and km/h. WEATHER
+  labels the temperature `C` or `F`, FORECAST shows the scale in its header, and
+  ANALOG, FLIPCLOCK and DECRYPT's core temperature all follow the same choice.
+  The weather request names both units outright rather than relying on the API's
+  defaults.
+- **Sunrise and sunset** on SOLAR come from the NOAA low-precision equations
+  using the same stored coordinates, so they need no network of their own. Polar
+  day and polar night are handled rather than printing nonsense.
 
 Settings live in NVS on the device, never in source.
 
@@ -170,6 +184,13 @@ A few things that were less obvious than they look:
   circles puts Mercury 24 degrees from where it really is and Mars 11, so
   ORRERY adds the equation of center and lands every planet inside 0.7
   degrees. Both were checked against `ephem` over a four-year span.
+- **The faces were rendered before they were trusted.** The face functions were
+  lifted verbatim out of the sketch, compiled against the real U8g2 library with
+  a null device, and dumped as images. That caught a split-flap leaf drawing the
+  incoming digit at the wrong baseline (the lower half of every tile went blank
+  for half the animation), an empty bordered tile where a leading zero should be
+  suppressed, and a word clock that read IT ISHTE because its lit column spans
+  were off by one. None of those are visible in source.
 - **The remembered face never writes from the render loop.** NVS is flash and
   wears out, so a face change arms a 4-second timer; cycling through all
   fourteen costs one write once you stop.
