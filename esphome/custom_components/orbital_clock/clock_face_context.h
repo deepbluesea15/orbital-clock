@@ -4,6 +4,7 @@
 #include <WiFi.h>
 #include <U8g2lib.h>
 #include <time.h>
+#include "time_service.h"
 
 #define CALLSIGN "NX-01"
 
@@ -42,7 +43,7 @@ enum WxIcon : uint8_t { IC_SUN, IC_PARTLY, IC_CLOUD, IC_FOG, IC_RAIN, IC_SNOW, I
 
 float subSecond();
 int hour12(int hour);
-float stardate();
+inline float stardate() { return TimeService::stardate(); }
 const char *linkStr();
 const char *cityLabel();
 uint8_t wxIcon(int code);
