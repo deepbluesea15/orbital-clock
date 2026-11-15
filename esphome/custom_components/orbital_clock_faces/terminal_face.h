@@ -9,6 +9,7 @@ class TerminalFace final : public ClockFace {
   static void logPush(const char *text);
   static void logRandom();
   static void boot_line(const char *text);
+  static void draw_boot();
   void draw() override;
  private:
   static char logBuf[LOG_ROWS][30];

@@ -12,9 +12,13 @@ The clock now uses ESPHome's built-in SNTP time component instead of managing
 NTP internally. `TimeService` reads ESPHome's local `ESPTime`, and location-based
 timezone changes use ESPHome's POSIX timezone rules. ESPHome does not include a
 runtime IANA timezone database, so the component retains mappings for the
-timezone choices and geocoding results it supports.
+timezone choices and geocoding results it supports. Automatic timezone uses
+UTC until a location with a supported timezone has been resolved.
 The Solar face uses ESPHome's `sun` component for sunrise and sunset, with
-coordinates updated from the cached or geocoded weather location.
+coordinates updated from the cached or geocoded weather location. Its countdown
+uses the next actual event, even when the selected timezone differs from the
+weather location. Near polar transitions it shows the current horizon state
+when a complete daylight period is unavailable.
 
 ### Network Status
 Network queries (`WiFi.status()`, `WiFi.RSSI()`, `WiFi.channel()`) have been
@@ -52,6 +56,8 @@ python -c "import base64, secrets; print(base64.b64encode(secrets.token_bytes(32
 `secrets.yaml` is ignored by Git. `secrets.yaml.example` shows the required
 fields. Wi-Fi credentials are provided to ESPHome; if the network is
 unavailable, the device starts the `ORBITAL-SETUP` fallback access point.
+Wi-Fi or Home Assistant outages do not cause automatic reboots, so a clock
+that has already synchronized can continue running offline.
 
 ## Home Assistant
 

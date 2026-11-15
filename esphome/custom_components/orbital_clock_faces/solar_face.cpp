@@ -4,6 +4,38 @@
 #include "esphome/components/sun/sun.h"
 #include "esphome/core/time.h"
 
+namespace {
+constexpr double SUNRISE_ELEVATION = -0.83333;
+constexpr time_t SECONDS_PER_DAY = 86400;
+}
+
+void SolarFace::update_events(time_t now) {
+  if (cached_ && now / 60 == cached_minute_ && now >= last_update_ &&
+      cfg.lat == cached_lat_ && cfg.lon == cached_lon_ &&
+      (!events_.next_rise || now < events_.next_rise) &&
+      (!events_.next_set || now < events_.next_set)) {
+    return;
+  }
+
+  auto *sun = WeatherService::sun();
+  events_ = {};
+  const time_t utc_midnight = now - now % SECONDS_PER_DAY;
+  // Solar events can fall on an adjacent UTC date, especially near the date line.
+  for (int day = -2; day <= 2; day++) {
+    const auto reference = esphome::ESPTime::from_epoch_utc(utc_midnight + day * SECONDS_PER_DAY);
+    auto rise = sun->sunrise(reference, SUNRISE_ELEVATION);
+    auto set = sun->sunset(reference, SUNRISE_ELEVATION);
+    if (rise.has_value()) events_.add_rise(rise->timestamp, now);
+    if (set.has_value()) events_.add_set(set->timestamp, now);
+  }
+  day_ = sun->is_above_horizon(SUNRISE_ELEVATION);
+  cached_minute_ = now / 60;
+  last_update_ = now;
+  cached_lat_ = cfg.lat;
+  cached_lon_ = cfg.lon;
+  cached_ = true;
+}
+
 void SolarFace::draw() {
   char buf[26];
   u8g2.setFont(u8g2_font_4x6_tr);
@@ -18,7 +50,6 @@ void SolarFace::draw() {
     return;
   }
 
-  constexpr double SUNRISE_ELEVATION = -0.83333;
   auto *sun = WeatherService::sun();
   if (sun == nullptr) {
     const char *m = "SUN DATA UNAVAILABLE";
@@ -28,15 +59,7 @@ void SolarFace::draw() {
   }
 
   time_t nowT = time(nullptr);
-  auto localMidnight = esphome::ESPTime::from_epoch_local(nowT);
-  localMidnight.hour = 0;
-  localMidnight.minute = 0;
-  localMidnight.second = 0;
-  localMidnight.recalc_timestamp_local();
-  // The Sun API takes a UTC date; use the UTC instant of local midnight to select this local day's events.
-  const auto localDayReference = esphome::ESPTime::from_epoch_utc(localMidnight.timestamp);
-  auto riseEvent = sun->sunrise(localDayReference, SUNRISE_ELEVATION);
-  auto setEvent = sun->sunset(localDayReference, SUNRISE_ELEVATION);
+  this->update_events(nowT);
 
   const int cx = 64, cy = 54, rx = 56, ry = 22;
   for (int a = 180; a <= 360; a += 3) {
@@ -45,24 +68,22 @@ void SolarFace::draw() {
   }
   dHLine(2, 54, 124);
 
-  if (!riseEvent.has_value() || !setEvent.has_value()) {
+  auto local_midnight = esphome::ESPTime::from_epoch_local(nowT);
+  local_midnight.hour = local_midnight.minute = local_midnight.second = 0;
+  local_midnight.recalc_timestamp_local();
+  const SolarPeriod period = events_.period(day_, local_midnight.timestamp);
+  if (!period.valid()) {
     u8g2.setFont(u8g2_font_6x10_tf);
-    const char *m = sun->is_above_horizon(SUNRISE_ELEVATION) ? "MIDNIGHT SUN" : "POLAR NIGHT";
+    const char *m = events_.any() ? (day_ ? "SUN ABOVE HORIZON" : "SUN BELOW HORIZON")
+                                  : (day_ ? "MIDNIGHT SUN" : "POLAR NIGHT");
     dStr((W - strW(m)) / 2, 36, m);
     return;
   }
 
-  if (setEvent->timestamp <= riseEvent->timestamp) {
-    const char *m = "SUN DATA UNAVAILABLE";
-    u8g2.setFont(u8g2_font_6x10_tf);
-    dStr((W - strW(m)) / 2, 36, m);
-    return;
-  }
-
-  time_t rise = riseEvent->timestamp;
-  time_t set = setEvent->timestamp;
+  time_t rise = period.rise;
+  time_t set = period.set;
   double frac = (double)(nowT - rise) / (double)(set - rise);
-  bool day = nowT >= rise && nowT <= set;
+  bool day = day_;
   if (frac < 0) frac = 0;
   if (frac > 1) frac = 1;
 
@@ -86,8 +107,7 @@ void SolarFace::draw() {
   int rh = use24h ? rt.tm_hour : hour12(rt.tm_hour);
   int sh = use24h ? st.tm_hour : hour12(st.tm_hour);
 
-  long until = day ? (long)(set - nowT) : (long)(rise - nowT);
-  if (until < 0) until += 86400;                 // after sunset: tomorrow's rise
+  long until = static_cast<long>(period.next_transition - nowT);
   u8g2.setFont(u8g2_font_6x10_tf);
   snprintf(buf, sizeof(buf), day ? "SETS IN %ld:%02ld" : "RISES IN %ld:%02ld",
            until / 3600, (until / 60) % 60);

@@ -241,6 +241,9 @@ void ClockRuntime::setup() {
   starfield.initialize();
   ClockFaces::initialize();
   ClockFaces::boot_line("ORBITAL CLOCK v1.1");
+  u8g2.clearBuffer();
+  ClockFaces::draw_boot();
+  u8g2.sendBuffer();
   boot_stage_at = millis();
   
   WeatherService::load();
@@ -325,7 +328,12 @@ void ClockRuntime::loop() {
           break;
       }
     }
-    if (boot_stage < 6) return;
+    if (boot_stage < 6) {
+      ClockFaces::draw_boot();
+      button_controller.draw_reset_overlay();
+      u8g2.sendBuffer();
+      return;
+    }
   }
 
   if (!TimeService::is_valid()) {
@@ -335,6 +343,7 @@ void ClockRuntime::loop() {
     u8g2.setFont(u8g2_font_4x6_tr);
     const char *status = NetworkStatus::is_connected() ? "SYNCING WITH SNTP" : "NO NETWORK";
     u8g2.drawStr((W - u8g2.getStrWidth(status)) / 2, 42, status);
+    button_controller.draw_reset_overlay();
     u8g2.sendBuffer();
     return;
   }

@@ -97,7 +97,10 @@ const TimezoneEntry TIMEZONES[] = {
 bool TimezoneResolver::apply(const String &configured, const String &iana_hint) {
   const String &iana =
       configured.length() && configured != "Automatic" && configured != "auto" ? configured : iana_hint;
-  if (!iana.length()) return false;
+  if (!iana.length()) {
+    esphome::time::set_global_tz(UTC);
+    return false;
+  }
   for (const auto &timezone : TIMEZONES) {
     if (iana == timezone.iana) {
       esphome::time::set_global_tz(*timezone.timezone);

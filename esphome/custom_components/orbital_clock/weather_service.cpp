@@ -344,6 +344,7 @@ void WeatherService::set_timezone(const char *zone) {
         }
       } else {
         cfg.haveLoc = false;
+        TimezoneResolver::apply("UTC");
       }
     } else {
       if (!TimezoneResolver::apply(cfg.tz)) {
@@ -373,6 +374,7 @@ void WeatherService::set_city(const char *city) {
       }
     } else {
       cfg.haveLoc = false;
+      if (cfg.tz == "Automatic") TimezoneResolver::apply("UTC");
     }
     WeatherService::data_.valid = false;
   }

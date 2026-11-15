@@ -55,10 +55,11 @@ void TerminalFace::draw() {
 }
 void TerminalFace::boot_line(const char *text) {
   logPush(text);
-  u8g2.clearBuffer();
+}
+
+void TerminalFace::draw_boot() {
   u8g2.setFont(u8g2_font_4x6_tr);
   for (uint8_t i = 0; i < LOG_ROWS; i++)
     if (logBuf[i][0]) u8g2.drawStr(6, 6 + i * 7, logBuf[i]);
   u8g2.drawBox(0, 56, 4, 6);
-  u8g2.sendBuffer();
 }

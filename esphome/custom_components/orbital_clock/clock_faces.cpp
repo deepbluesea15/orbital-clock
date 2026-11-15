@@ -12,6 +12,10 @@ void ClockFaces::boot_line(const char *text) {
   TerminalFace::boot_line(text);
 }
 
+void ClockFaces::draw_boot() {
+  TerminalFace::draw_boot();
+}
+
 void ClockFaces::draw(uint8_t face) {
   esphome::LockGuard lock(WeatherService::state_mutex());
   switch (face) {

@@ -35,5 +35,6 @@ class ClockFaces {
  public:
   static void initialize();
   static void boot_line(const char *text);
+  static void draw_boot();
   static void draw(uint8_t face);
 };
