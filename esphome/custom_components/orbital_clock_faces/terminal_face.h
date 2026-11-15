@@ -8,7 +8,7 @@ class TerminalFace final : public ClockFace {
   static void initialize();
   static void logPush(const char *text);
   static void logRandom();
-  static void boot_line(const char *text, uint16_t hold);
+  static void boot_line(const char *text);
   void draw() override;
  private:
   static char logBuf[LOG_ROWS][30];

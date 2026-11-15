@@ -23,25 +23,28 @@ void ClockSettings::sync(const DisplayEngine &display, const WeatherService &wea
   const std::string units = weather.current_units();
   const std::string city = weather.current_city();
 
-  if (this->face_select_->current_option() != face) this->face_select_->publish_state(face);
-  if (this->format_select_->current_option() != format) this->format_select_->publish_state(format);
-  if (this->units_select_->current_option() != units) this->units_select_->publish_state(units);
-  if (this->city_text_->state != city) this->city_text_->publish_state(city);
+  if (this->face_select_->current_option() != face) this->face_select_->make_call().set_option(face).perform();
+  if (this->format_select_->current_option() != format) this->format_select_->make_call().set_option(format).perform();
+  if (this->units_select_->current_option() != units) this->units_select_->make_call().set_option(units).perform();
+  if (this->city_text_->state != city) this->city_text_->make_call().set_value(city).perform();
 }
 
 void ClockSettings::set_face(const std::string &value, DisplayEngine &display, WeatherService &weather) {
   display.set_face(value);
-  this->sync(display, weather);
+  const std::string face = display.current_face();
+  if (this->face_select_->current_option() != face) this->face_select_->publish_state(face);
 }
 
 void ClockSettings::set_time_format(const std::string &value, DisplayEngine &display, WeatherService &weather) {
   display.set_time_format(value);
-  this->sync(display, weather);
+  const std::string format = display.current_time_format();
+  if (this->format_select_->current_option() != format) this->format_select_->publish_state(format);
 }
 
 void ClockSettings::set_units(const std::string &value, DisplayEngine &display, WeatherService &weather) {
   weather.set_units(value);
-  this->sync(display, weather);
+  const std::string units = weather.current_units();
+  if (this->units_select_->current_option() != units) this->units_select_->publish_state(units);
 }
 
 void ClockSettings::set_timezone(const std::string &value, DisplayEngine &display, WeatherService &weather) {
@@ -51,15 +54,16 @@ void ClockSettings::set_timezone(const std::string &value, DisplayEngine &displa
 
 void ClockSettings::set_city(const std::string &value, DisplayEngine &display, WeatherService &weather) {
   weather.set_city(value);
-  this->sync(display, weather);
+  const std::string city = weather.current_city();
+  if (this->city_text_->state != city) this->city_text_->publish_state(city);
 }
 
 void ClockSettings::reset(DisplayEngine &display, WeatherService &weather) {
-  this->set_face("NEON", display, weather);
-  this->set_time_format("12-hour", display, weather);
-  this->set_units("Celsius", display, weather);
-  this->set_timezone("Automatic", display, weather);
-  this->set_city("", display, weather);
+  this->face_select_->make_call().set_option("NEON").perform();
+  this->format_select_->make_call().set_option("12-hour").perform();
+  this->units_select_->make_call().set_option("Celsius").perform();
+  this->timezone_select_->make_call().set_option("Automatic").perform();
+  this->city_text_->make_call().set_value("").perform();
 }
 
 }  // namespace orbital_clock

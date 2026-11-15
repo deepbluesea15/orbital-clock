@@ -34,6 +34,6 @@ enum Face : uint8_t {
 class ClockFaces {
  public:
   static void initialize();
-  static void boot_line(const char *text, uint16_t hold);
+  static void boot_line(const char *text);
   static void draw(uint8_t face);
 };

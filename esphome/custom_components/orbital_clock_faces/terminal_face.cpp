@@ -53,7 +53,7 @@ void TerminalFace::draw() {
   dStr(0, 62, buf);
   if (subSecond() < 0.5f) dBox(strW(buf) + 2, 55, 5, 8);
 }
-void TerminalFace::boot_line(const char *text, uint16_t hold) {
+void TerminalFace::boot_line(const char *text) {
   logPush(text);
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_4x6_tr);
@@ -61,5 +61,4 @@ void TerminalFace::boot_line(const char *text, uint16_t hold) {
     if (logBuf[i][0]) u8g2.drawStr(6, 6 + i * 7, logBuf[i]);
   u8g2.drawBox(0, 56, 4, 6);
   u8g2.sendBuffer();
-  delay(hold);
 }

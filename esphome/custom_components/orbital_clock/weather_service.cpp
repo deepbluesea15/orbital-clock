@@ -192,8 +192,6 @@ bool WeatherService::geocode_city(const String &city, uint32_t revision) {
   float latitude = result["latitude"].as<float>();
   float longitude = result["longitude"].as<float>();
   String iana_timezone = result["timezone"] | "";
-  String city_name = result["name"] | "";
-
   String cached_city;
   {
     esphome::LockGuard lock(WeatherService::state_mutex_);
@@ -205,7 +203,6 @@ bool WeatherService::geocode_city(const String &city, uint32_t revision) {
       WeatherService::sun_->set_latitude(latitude);
       WeatherService::sun_->set_longitude(longitude);
     }
-    if (city_name.length()) cfg.city = city_name;
     cached_city = cfg.city;
     cfg.cached_city = cached_city;
     cfg.cached_timezone = iana_timezone;
@@ -336,7 +333,7 @@ void WeatherService::set_timezone(const char *zone) {
     cfg.tz = choice;
     WeatherService::config_revision_++;
     if (choice == "Automatic") {
-      if (cfg.city == cfg.cached_city && cfg.cached_city.length()) {
+      if (cfg.cached_city.length() && cfg.city.equalsIgnoreCase(cfg.cached_city)) {
         cfg.haveLoc = true;
         if (WeatherService::sun_ != nullptr) {
           WeatherService::sun_->set_latitude(cfg.lat);
@@ -365,7 +362,7 @@ void WeatherService::set_city(const char *city) {
     if (next == cfg.city) return;
     cfg.city = next;
     WeatherService::config_revision_++;
-    if (cfg.city == cfg.cached_city && cfg.cached_city.length()) {
+    if (cfg.cached_city.length() && cfg.city.equalsIgnoreCase(cfg.cached_city)) {
       cfg.haveLoc = true;
       if (WeatherService::sun_ != nullptr) {
         WeatherService::sun_->set_latitude(cfg.lat);
@@ -376,8 +373,6 @@ void WeatherService::set_city(const char *city) {
       }
     } else {
       cfg.haveLoc = false;
-      cfg.lat = 0;
-      cfg.lon = 0;
     }
     WeatherService::data_.valid = false;
   }

@@ -8,8 +8,8 @@ void ClockFaces::initialize() {
   RainFace::initialize();
 }
 
-void ClockFaces::boot_line(const char *text, uint16_t hold) {
-  TerminalFace::boot_line(text, hold);
+void ClockFaces::boot_line(const char *text) {
+  TerminalFace::boot_line(text);
 }
 
 void ClockFaces::draw(uint8_t face) {

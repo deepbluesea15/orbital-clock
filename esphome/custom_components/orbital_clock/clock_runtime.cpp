@@ -100,8 +100,10 @@ static bool fmtFlash = false;
 
 static Starfield starfield;
 static ButtonController button_controller;
-static uint32_t face_flush_at = 0;
 static bool reset_message = false;
+static uint8_t boot_stage = 0;
+static uint32_t boot_stage_at = 0;
+static uint32_t boot_stage_duration = 420;
 
 const char *DOW[7]  = { "SUN","MON","TUE","WED","THU","FRI","SAT" };
 const char *MON[12] = { "JAN","FEB","MAR","APR","MAY","JUN",
@@ -180,7 +182,6 @@ void orbital_next_face() {
   face = (face + 1) % FACE_COUNT;
   lastFaceSw = millis();
   labelUntil = millis() + 1000;
-  face_flush_at = millis() + 4000;
 }
 
 void orbital_set_units(const char *units) {
@@ -235,13 +236,12 @@ void ClockRuntime::setup() {
   u8g2.setBusClock(8000000);
   u8g2.begin();
   u8g2.setContrast(BRIGHT_DAY);
-  u8g2.clearBuffer();
-  u8g2.setFont(u8g2_font_6x10_tf);
-  u8g2.drawStr(28, 32, "ORBITAL");
-  u8g2.sendBuffer();
+  u8g2.setFontMode(1);
 
   starfield.initialize();
   ClockFaces::initialize();
+  ClockFaces::boot_line("ORBITAL CLOCK v1.1");
+  boot_stage_at = millis();
   
   WeatherService::load();
   TimeService::tick();
@@ -296,6 +296,36 @@ void ClockRuntime::loop() {
     u8g2.drawStr((W - u8g2.getStrWidth(restart)) / 2, 42, restart);
     u8g2.sendBuffer();
     return;
+  }
+
+  if (boot_stage < 6) {
+    if (millis() - boot_stage_at >= boot_stage_duration) {
+      boot_stage_at = millis();
+      switch (++boot_stage) {
+        case 1:
+          ClockFaces::boot_line("WAKE // COLD BOOT");
+          boot_stage_duration = 260;
+          break;
+        case 2:
+          ClockFaces::boot_line("SSD1309 PANEL .... OK");
+          boot_stage_duration = 240;
+          break;
+        case 3:
+          ClockFaces::boot_line(NetworkStatus::is_connected() ? "UPLINK ........... OK" : "UPLINK ....... WAITING");
+          boot_stage_duration = 220;
+          break;
+        case 4:
+          ClockFaces::boot_line(TimeService::is_valid() ? "NTP HANDSHAKE .... OK" : "NTP HANDSHAKE ... WAIT");
+          boot_stage_duration = 260;
+          break;
+        case 5:
+          ClockFaces::boot_line(NetworkStatus::is_connected() && TimeService::is_valid()
+                                    ? "ALL SYSTEMS NOMINAL" : "STARTUP IN PROGRESS");
+          boot_stage_duration = 500;
+          break;
+      }
+    }
+    if (boot_stage < 6) return;
   }
 
   if (!TimeService::is_valid()) {

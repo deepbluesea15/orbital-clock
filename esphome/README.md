@@ -64,7 +64,8 @@ integration. These controls are exposed and saved by ESPHome across reboots:
 - **Time zone** uses the weather location automatically or selects a supported
 	IANA time zone directly.
 - **Weather location** accepts a city or place name; changing it triggers a
-	fresh geocode and weather fetch.
+	fresh geocode and weather fetch. The entered name is retained for the
+	location cache.
 - **Day brightness** and **Night brightness** set OLED contrast from 0% to
   100%. The defaults are 100% and 12%; 0% is minimum contrast, not display off.
 - **Night dimming starts** and **Night dimming ends** set the schedule in the
@@ -76,8 +77,11 @@ integration. These controls are exposed and saved by ESPHome across reboots:
 	location defaults, as well as brightness, schedule, and rotation defaults.
 
 The BOOT button still cycles faces and toggles the time format; those changes
-are reflected back into the Home Assistant entities. Holding BOOT for eight
-seconds resets the same clock settings as the Home Assistant button.
+are saved to flash within approximately six seconds and reflected back into the
+Home Assistant entities. Holding BOOT for eight seconds resets the same clock
+settings as the Home Assistant button.
+At startup, the display shows a short terminal sequence with the current
+network and time synchronization status before switching to the clock.
 
 ## Code structure
 

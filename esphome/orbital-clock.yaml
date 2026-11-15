@@ -26,6 +26,9 @@ wifi:
 
 captive_portal:
 
+preferences:
+  flash_write_interval: 5s
+
 api:
   encryption:
     key: !secret api_encryption_key
