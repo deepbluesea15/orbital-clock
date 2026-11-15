@@ -253,6 +253,7 @@ external_components:
       ref: esphome
       path: esphome/custom_components
     components: [orbital_clock, orbital_clock_faces]
+    refresh: always
 
 logger:
   baud_rate: 115200

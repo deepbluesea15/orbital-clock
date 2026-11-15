@@ -110,7 +110,11 @@ create a device YAML in the ESPHome Dashboard:
 
 ```yaml
 packages:
-  orbital_clock: github://arikalish/orbital-clock/esphome/orbital-clock.yaml@esphome
+  orbital_clock:
+    url: https://github.com/arikalish/orbital-clock.git
+    ref: esphome
+    files: [esphome/orbital-clock.yaml]
+    refresh: always
 
 esphome:
   name: orbital-clock
@@ -122,6 +126,7 @@ Add the same secrets listed in `secrets.yaml.example` to the Dashboard's
 from GitHub; the Dashboard does not need a local copy of the source. The
 `esphome.name` and `friendly_name` entries can be changed per device. For
 the first OTA upload after a hostname change, use the device's old address.
+The package and its external components are refreshed on each build.
 
 ### Local build
 

@@ -72,7 +72,11 @@ Create a device in the ESPHome Dashboard and use this YAML:
 
 ```yaml
 packages:
-  orbital_clock: github://arikalish/orbital-clock/esphome/orbital-clock.yaml@esphome
+  orbital_clock:
+    url: https://github.com/arikalish/orbital-clock.git
+    ref: esphome
+    files: [esphome/orbital-clock.yaml]
+    refresh: always
 
 esphome:
   name: orbital-clock
@@ -83,7 +87,8 @@ In the Dashboard's `secrets.yaml`, define `wifi_ssid`, `wifi_password`,
 `fallback_ap_password` (at least eight characters), and `api_encryption_key`
 (a base64-encoded 32-byte key). Never commit or share the secrets file. ESPHome
 downloads the package and external components from GitHub; no source files need
-to be copied to Home Assistant. Choose a unique `name` for each device.
+to be copied to Home Assistant. Both the package and the external components
+are refreshed on each build. Choose a unique `name` for each device.
 
 Install the firmware via USB initially, then add the device using Home
 Assistant's ESPHome integration. The Dashboard can build and install later
