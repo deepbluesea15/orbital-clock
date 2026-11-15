@@ -209,6 +209,13 @@ time:
       - pool.ntp.org
       - time.nist.gov
 
+sun:
+  id: orbital_sun
+  time_id: sntp_time
+  # WeatherService replaces these defaults with the cached/geocoded location.
+  latitude: 0
+  longitude: 0
+
 http_request:
   id: weather_http
   timeout: 10s
@@ -222,3 +229,4 @@ orbital_clock:
   timezone_select: orbital_timezone
   city_text: orbital_city
   http_request_id: weather_http
+  sun_id: orbital_sun

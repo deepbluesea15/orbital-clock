@@ -9,11 +9,16 @@ namespace esphome {
 namespace http_request {
 class HttpRequestComponent;
 }
+namespace sun {
+class Sun;
+}
 }  // namespace esphome
 
 class WeatherService {
  public:
   static void set_http_request(esphome::http_request::HttpRequestComponent *request);
+  static void set_sun(esphome::sun::Sun *sun);
+  static esphome::sun::Sun *sun();
   static void load();
   static void start();
   static void request();
@@ -34,6 +39,7 @@ class WeatherService {
   static void fetch(float latitude, float longitude, bool metric, uint32_t revision);
   static void save_location(float latitude, float longitude, const String &city, const String &timezone);
   static esphome::http_request::HttpRequestComponent *http_request_;
+  static esphome::sun::Sun *sun_;
   static TaskHandle_t task_handle_;
   static esphome::Mutex state_mutex_;
   static WxData data_;

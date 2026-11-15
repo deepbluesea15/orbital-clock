@@ -14,6 +14,9 @@ namespace esphome {
 namespace http_request {
 class HttpRequestComponent;
 }
+namespace sun {
+class Sun;
+}
 }  // namespace esphome
 
 namespace esphome {
@@ -31,6 +34,7 @@ class OrbitalClock : public Component {
   void set_city_text(text::Text *entity) { settings_.set_city_text(entity); }
   void set_time_source(time::RealTimeClock *source) { time_source_ = source; }
   void set_http_request(http_request::HttpRequestComponent *request) { http_request_ = request; }
+  void set_sun(sun::Sun *sun) { sun_ = sun; }
 
   void set_face(const std::string &value) { settings_.set_face(value, display_, weather_); }
   void set_time_format(const std::string &value) { settings_.set_time_format(value, display_, weather_); }
@@ -49,6 +53,7 @@ class OrbitalClock : public Component {
   SketchWeatherService weather_;
   time::RealTimeClock *time_source_{nullptr};
   http_request::HttpRequestComponent *http_request_{nullptr};
+  sun::Sun *sun_{nullptr};
 };
 
 }  // namespace orbital_clock

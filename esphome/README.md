@@ -13,6 +13,8 @@ NTP internally. `TimeService` reads ESPHome's local `ESPTime`, and location-base
 timezone changes use ESPHome's POSIX timezone rules. ESPHome does not include a
 runtime IANA timezone database, so the component retains mappings for the
 timezone choices and geocoding results it supports.
+The Solar face uses ESPHome's `sun` component for sunrise and sunset, with
+coordinates updated from the cached or geocoded weather location.
 
 ### Network Status
 Network queries (`WiFi.status()`, `WiFi.RSSI()`, `WiFi.channel()`) have been

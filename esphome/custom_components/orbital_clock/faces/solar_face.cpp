@@ -1,31 +1,8 @@
 #include "solar_face.h"
 #include "esphome/components/orbital_clock/clock_face_context.h"
-
-// ------------------------- FACE: SOLAR --------------------------------------
-// Sunrise and sunset from the NOAA low-precision equations, using the lat/lon
-// already stored for weather. Good to about a minute, which is finer than the
-// arc can show anyway.
-bool sunTimes(double lat, double lon, time_t when, time_t *rise, time_t *set) {
-  const double D2R = 0.01745329251994;
-  double jd = (double)when / 86400.0 + 2440587.5;
-  double n  = floor(jd - 2451545.0 + 0.0008 + 0.5);
-  double Js = n - lon / 360.0;
-  double M  = fmod(357.5291 + 0.98560028 * Js, 360.0);
-  double Mr = M * D2R;
-  double C  = 1.9148 * sin(Mr) + 0.0200 * sin(2 * Mr) + 0.0003 * sin(3 * Mr);
-  double lam = fmod(M + C + 180.0 + 102.9372, 360.0);
-  double lamr = lam * D2R;
-  double Jtr = 2451545.0 + Js + 0.0053 * sin(Mr) - 0.0069 * sin(2 * lamr);
-  double sinDec = sin(lamr) * sin(23.44 * D2R);
-  double dec = asin(sinDec);
-  double cosW = (sin(-0.833 * D2R) - sin(lat * D2R) * sinDec)
-              / (cos(lat * D2R) * cos(dec));
-  if (cosW > 1.0 || cosW < -1.0) return false;      // polar day or polar night
-  double w = acos(cosW) / D2R;
-  *rise = (time_t)((Jtr - w / 360.0 - 2440587.5) * 86400.0);
-  *set  = (time_t)((Jtr + w / 360.0 - 2440587.5) * 86400.0);
-  return true;
-}
+#include "esphome/components/orbital_clock/weather_service.h"
+#include "esphome/components/sun/sun.h"
+#include "esphome/core/time.h"
 
 void SolarFace::draw() {
   char buf[26];
@@ -41,8 +18,25 @@ void SolarFace::draw() {
     return;
   }
 
-  time_t nowT = time(nullptr), rise, set;
-  bool ok = sunTimes(cfg.lat, cfg.lon, nowT, &rise, &set);
+  constexpr double SUNRISE_ELEVATION = -0.83333;
+  auto *sun = WeatherService::sun();
+  if (sun == nullptr) {
+    const char *m = "SUN DATA UNAVAILABLE";
+    u8g2.setFont(u8g2_font_6x10_tf);
+    dStr((W - strW(m)) / 2, 36, m);
+    return;
+  }
+
+  time_t nowT = time(nullptr);
+  auto localMidnight = esphome::ESPTime::from_epoch_local(nowT);
+  localMidnight.hour = 0;
+  localMidnight.minute = 0;
+  localMidnight.second = 0;
+  localMidnight.recalc_timestamp_local();
+  // The Sun API takes a UTC date; use the UTC instant of local midnight to select this local day's events.
+  const auto localDayReference = esphome::ESPTime::from_epoch_utc(localMidnight.timestamp);
+  auto riseEvent = sun->sunrise(localDayReference, SUNRISE_ELEVATION);
+  auto setEvent = sun->sunset(localDayReference, SUNRISE_ELEVATION);
 
   const int cx = 64, cy = 54, rx = 56, ry = 22;
   for (int a = 180; a <= 360; a += 3) {
@@ -51,16 +45,24 @@ void SolarFace::draw() {
   }
   dHLine(2, 54, 124);
 
-  if (!ok) {                                     // sun never rises or never sets
+  if (!riseEvent.has_value() || !setEvent.has_value()) {
     u8g2.setFont(u8g2_font_6x10_tf);
-    const char *m = (cfg.lat > 0) == (tnow.tm_mon >= 3 && tnow.tm_mon <= 8)
-                    ? "MIDNIGHT SUN" : "POLAR NIGHT";
+    const char *m = sun->is_above_horizon(SUNRISE_ELEVATION) ? "MIDNIGHT SUN" : "POLAR NIGHT";
     dStr((W - strW(m)) / 2, 36, m);
     return;
   }
 
+  if (setEvent->timestamp <= riseEvent->timestamp) {
+    const char *m = "SUN DATA UNAVAILABLE";
+    u8g2.setFont(u8g2_font_6x10_tf);
+    dStr((W - strW(m)) / 2, 36, m);
+    return;
+  }
+
+  time_t rise = riseEvent->timestamp;
+  time_t set = setEvent->timestamp;
   double frac = (double)(nowT - rise) / (double)(set - rise);
-  bool day = (frac >= 0.0 && frac <= 1.0);
+  bool day = nowT >= rise && nowT <= set;
   if (frac < 0) frac = 0;
   if (frac > 1) frac = 1;
 

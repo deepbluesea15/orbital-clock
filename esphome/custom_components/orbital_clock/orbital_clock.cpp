@@ -15,6 +15,7 @@ void OrbitalClock::setup() {
 		TimeService::set_source(this->time_source_);
 	}
 	::WeatherService::set_http_request(this->http_request_);
+	::WeatherService::set_sun(this->sun_);
 	this->display_.setup();
 	this->settings_.restore(this->display_, this->weather_);
 	this->set_interval("clock_frame", 40, [this]() { this->display_.loop(); });

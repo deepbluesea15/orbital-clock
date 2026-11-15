@@ -6,6 +6,7 @@
 
 #include "esphome/components/http_request/http_request.h"
 #include "esphome/components/json/json_util.h"
+#include "esphome/components/sun/sun.h"
 #include "esphome/core/preferences.h"
 #include "esphome/core/log.h"
 #include "network_status.h"
@@ -15,6 +16,7 @@ static const char *const TAG = "orbital_clock.weather";
 
 Cfg cfg;
 esphome::http_request::HttpRequestComponent *WeatherService::http_request_ = nullptr;
+esphome::sun::Sun *WeatherService::sun_ = nullptr;
 TaskHandle_t WeatherService::task_handle_ = nullptr;
 esphome::Mutex WeatherService::state_mutex_;
 WxData WeatherService::data_{};
@@ -123,11 +125,26 @@ void WeatherService::load() {
   cfg.cached_timezone = cache.timezone;
   cfg.lat = cache.latitude;
   cfg.lon = cache.longitude;
+  if (WeatherService::sun_ != nullptr) {
+    WeatherService::sun_->set_latitude(cfg.lat);
+    WeatherService::sun_->set_longitude(cfg.lon);
+  }
 }
 
 void WeatherService::set_http_request(esphome::http_request::HttpRequestComponent *request) {
   WeatherService::http_request_ = request;
 }
+
+void WeatherService::set_sun(esphome::sun::Sun *sun) {
+  esphome::LockGuard lock(WeatherService::state_mutex_);
+  WeatherService::sun_ = sun;
+  if (WeatherService::sun_ != nullptr) {
+    WeatherService::sun_->set_latitude(cfg.lat);
+    WeatherService::sun_->set_longitude(cfg.lon);
+  }
+}
+
+esphome::sun::Sun *WeatherService::sun() { return WeatherService::sun_; }
 
 void WeatherService::request() {
   if (WeatherService::task_handle_ != nullptr) xTaskNotifyGive(WeatherService::task_handle_);
@@ -184,6 +201,10 @@ bool WeatherService::geocode_city(const String &city, uint32_t revision) {
     cfg.lat = latitude;
     cfg.lon = longitude;
     cfg.haveLoc = true;
+    if (WeatherService::sun_ != nullptr) {
+      WeatherService::sun_->set_latitude(latitude);
+      WeatherService::sun_->set_longitude(longitude);
+    }
     if (city_name.length()) cfg.city = city_name;
     cached_city = cfg.city;
     cfg.cached_city = cached_city;
@@ -317,6 +338,10 @@ void WeatherService::set_timezone(const char *zone) {
     if (choice == "Automatic") {
       if (cfg.city == cfg.cached_city && cfg.cached_city.length()) {
         cfg.haveLoc = true;
+        if (WeatherService::sun_ != nullptr) {
+          WeatherService::sun_->set_latitude(cfg.lat);
+          WeatherService::sun_->set_longitude(cfg.lon);
+        }
         if (!TimezoneResolver::apply(cfg.tz, cfg.cached_timezone)) {
           ESP_LOGW(TAG, "No supported timezone mapping for '%s'; using UTC", cfg.cached_timezone.c_str());
         }
@@ -342,6 +367,10 @@ void WeatherService::set_city(const char *city) {
     WeatherService::config_revision_++;
     if (cfg.city == cfg.cached_city && cfg.cached_city.length()) {
       cfg.haveLoc = true;
+      if (WeatherService::sun_ != nullptr) {
+        WeatherService::sun_->set_latitude(cfg.lat);
+        WeatherService::sun_->set_longitude(cfg.lon);
+      }
       if (cfg.tz == "Automatic" && !TimezoneResolver::apply(cfg.tz, cfg.cached_timezone)) {
         ESP_LOGW(TAG, "No supported timezone mapping for '%s'; using UTC", cfg.cached_timezone.c_str());
       }
