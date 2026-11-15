@@ -53,15 +53,14 @@
 #include "clock_face_context.h"
 #include "clock_faces.h"
 #include "button_controller.h"
+#include "display_schedule.h"
 #include "network_status.h"
 #include "starfield.h"
 #include "time_service.h"
 #include "weather_service.h"
 
 bool use24h = false;
-static const uint32_t FACE_AUTO_MS = 0;
 static const uint8_t  BRIGHT_DAY   = 255;
-static const uint8_t  BRIGHT_NIGHT = 30;
 static const bool     GLITCH_FX    = true;
 static const bool     ANTI_BURNIN  = true;
 
@@ -88,6 +87,11 @@ static uint8_t face = FACE_NEON;
 static uint32_t labelUntil = 0;
 
 static uint32_t lastFaceSw = 0;
+static uint32_t face_auto_ms = 0;
+static uint8_t day_brightness = 100;
+static uint8_t night_brightness = 12;
+static uint32_t night_start = 22 * 3600;
+static uint32_t night_end = 7 * 3600;
 uint32_t bootMillis = 0;
 int gOfsX = 0, gOfsY = 0;
 static uint32_t lastDrift = 0;
@@ -151,6 +155,7 @@ const char *cityLabel() {
 void orbital_set_face(const char *name) {
   for (uint8_t i = 0; i < FACE_COUNT; i++) {
     if (strcmp(name, FACE_NAMES[i]) == 0) {
+      lastFaceSw = millis();
       face = i;
       labelUntil = millis() + 1000;
       return;
@@ -223,6 +228,7 @@ void orbital_sketch_loop() { ClockRuntime::loop(); }
 
 void ClockRuntime::setup() {
   bootMillis = millis();
+  lastFaceSw = bootMillis;
   randomSeed(esp_random());
 
   SPI.begin(PIN_SCK, -1, PIN_MOSI, PIN_CS);
@@ -243,8 +249,21 @@ void ClockRuntime::setup() {
 
 }
 
+void ClockRuntime::set_display_settings(uint8_t day, uint8_t night, uint32_t start, uint32_t end,
+                                        uint32_t rotation_minutes) {
+  day_brightness = day;
+  night_brightness = night;
+  night_start = start;
+  night_end = end;
+  uint32_t interval_ms = rotation_minutes * 60000UL;
+  if (face_auto_ms != interval_ms) {
+    face_auto_ms = interval_ms;
+    lastFaceSw = millis();
+  }
+}
+
 void ClockRuntime::loop() {
-  if (FACE_AUTO_MS && millis() - lastFaceSw > FACE_AUTO_MS) {
+  if (display_schedule::rotation_due(millis(), lastFaceSw, face_auto_ms)) {
     orbital_next_face();
   }
 
@@ -261,7 +280,9 @@ void ClockRuntime::loop() {
 
   static int lastBright = -1;
   const struct tm &now = TimeService::now();
-  int want = (now.tm_hour >= 22 || now.tm_hour < 7) ? BRIGHT_NIGHT : BRIGHT_DAY;
+  uint32_t seconds = now.tm_hour * 3600UL + now.tm_min * 60UL + now.tm_sec;
+  bool night = display_schedule::is_night(seconds, night_start, night_end);
+  int want = display_schedule::contrast(night ? night_brightness : day_brightness);
   if (want != lastBright) { lastBright = want; u8g2.setContrast(want); }
 
   starfield.step();

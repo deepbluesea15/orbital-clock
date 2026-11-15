@@ -65,8 +65,15 @@ integration. These controls are exposed and saved by ESPHome across reboots:
 	IANA time zone directly.
 - **Weather location** accepts a city or place name; changing it triggers a
 	fresh geocode and weather fetch.
+- **Day brightness** and **Night brightness** set OLED contrast from 0% to
+  100%. The defaults are 100% and 12%; 0% is minimum contrast, not display off.
+- **Night dimming starts** and **Night dimming ends** set the schedule in the
+  clock's selected local time zone (default 22:00–07:00). Equal times disable
+  the night period.
+- **Face rotation interval** sets minutes between faces (1–1440); zero disables
+  rotation. Selecting a face or changing the interval restarts the countdown.
 - **Reset clock settings** restores the face, format, units, timezone, and
-	location defaults.
+	location defaults, as well as brightness, schedule, and rotation defaults.
 
 The BOOT button still cycles faces and toggles the time format; those changes
 are reflected back into the Home Assistant entities. Holding BOOT for eight

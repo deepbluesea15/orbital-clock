@@ -1,9 +1,13 @@
 #pragma once
 
+#include <stdint.h>
+
 class ClockRuntime {
  public:
   static void setup();
   static void loop();
+  static void set_display_settings(uint8_t day_brightness, uint8_t night_brightness,
+                                   uint32_t night_start, uint32_t night_end, uint32_t rotation_minutes);
 };
 
 void orbital_sketch_setup();
