@@ -10,6 +10,8 @@ void orbital_sketch_setup();
 void orbital_sketch_loop();
 void orbital_set_face(const char *name);
 void orbital_set_time_format(const char *format);
+void orbital_next_face();
+void orbital_toggle_time_format();
 void orbital_set_units(const char *units);
 void orbital_set_timezone(const char *zone);
 void orbital_set_city(const char *city);
