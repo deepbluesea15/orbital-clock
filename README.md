@@ -1,5 +1,9 @@
 # ORBITAL CLOCK
 
+For the ESPHome and Home Assistant build, configuration entities, and OTA
+instructions, see [the ESPHome guide](esphome/README.md). The Arduino steps
+below describe the original standalone sketch.
+
 An eighteen-face display toy for the **Waveshare 1.51" transparent OLED** and an
 **ESP32-S3 SuperMini**. Clocks, weather, and a few things that are just nice to
 look at through a see-through panel.

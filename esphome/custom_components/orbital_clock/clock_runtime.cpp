@@ -248,6 +248,18 @@ const char *orbital_current_city() {
   return WeatherService::current_city(); 
 }
 
+void orbital_reset_settings() {
+  use24h = false;
+  face = FACE_NEON;
+  labelUntil = millis() + 1000;
+  cfg.city = "";
+  cfg.tz = "auto";
+  cfg.lat = 0;
+  cfg.lon = 0;
+  cfg.haveLoc = false;
+  cfg.metric = true;
+}
+
 // Entry points for sketch and ESPHome component
 void orbital_sketch_setup() { ClockRuntime::setup(); }
 void orbital_sketch_loop() { ClockRuntime::loop(); }
