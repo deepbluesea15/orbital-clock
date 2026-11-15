@@ -229,5 +229,6 @@ orbital_clock:
   units_select: orbital_units
   timezone_select: orbital_timezone
   city_text: orbital_city
+  time_id: sntp_time
   http_request_id: weather_http
   sun_id: orbital_sun
