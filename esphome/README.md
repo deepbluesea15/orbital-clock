@@ -123,8 +123,7 @@ remains separately in `../OrbitalClock/OrbitalClock.ino`.
 
 ### ESPHome Dashboard
 
-After these changes are merged and pushed to `main` on GitHub, create a device
-YAML in the ESPHome Dashboard:
+Create a device YAML in the ESPHome Dashboard:
 
 ```yaml
 packages:
