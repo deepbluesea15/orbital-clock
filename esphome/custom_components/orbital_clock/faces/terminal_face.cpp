@@ -1,5 +1,7 @@
 #include "terminal_face.h"
 #include "esphome/components/orbital_clock/clock_face_context.h"
+#include "esphome/components/orbital_clock/network_status.h"
+#include "esphome/components/orbital_clock/time_service.h"
 
 char TerminalFace::logBuf[TerminalFace::LOG_ROWS][30] = {};
 uint32_t TerminalFace::lastLogPush = 0;
@@ -19,8 +21,8 @@ void TerminalFace::logRandom() {
   uint32_t up = (millis() - bootMillis) / 1000;
   switch (random(13)) {
     case 0:  snprintf(b, sizeof(b), "RSSI %d dBm / CH %d",
-                      (int)WiFi.RSSI(), (int)WiFi.channel()); break;
-    case 1:  snprintf(b, sizeof(b), "STARDATE %.1f", stardate()); break;
+                      (int)NetworkStatus::rssi(), (int)NetworkStatus::channel()); break;
+    case 1:  snprintf(b, sizeof(b), "STARDATE %.1f", TimeService::stardate()); break;
     case 2:  snprintf(b, sizeof(b), "UPTIME %02lu:%02lu:%02lu",
                       up / 3600UL, (up / 60UL) % 60UL, up % 60UL); break;
     case 3:  snprintf(b, sizeof(b), "HEAP %u KB FREE", (unsigned)(ESP.getFreeHeap() / 1024)); break;
@@ -31,7 +33,7 @@ void TerminalFace::logRandom() {
     case 8:  snprintf(b, sizeof(b), "REACTOR %d%% NOMINAL", (int)random(94, 100)); break;
     case 9:  snprintf(b, sizeof(b), "CAFFEINE RESERVE: LOW"); break;
     case 10: snprintf(b, sizeof(b), "HULL TEMP %d C", (int)(temperatureRead())); break;
-    case 11: snprintf(b, sizeof(b), "NTP %s", timeValid ? "LOCKED" : "DRIFTING"); break;
+    case 11: snprintf(b, sizeof(b), "NTP %s", TimeService::is_valid() ? "LOCKED" : "DRIFTING"); break;
     default: snprintf(b, sizeof(b), "NO ANOMALIES DETECTED"); break;
   }
   logPush(b);

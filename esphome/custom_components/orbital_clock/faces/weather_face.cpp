@@ -1,13 +1,16 @@
 #include "weather_face.h"
 #include "esphome/components/orbital_clock/clock_face_context.h"
+#include "esphome/components/orbital_clock/network_status.h"
+#include "esphome/components/orbital_clock/weather_service.h"
 
-// ------------------------- FACE: WEATHER ------------------------------------
-void wxDrawCloud(int cx, int cy, int s) {
+// weather icon drawing helpers
+static void wxDrawCloud(int cx, int cy, int s) {
   u8g2.drawDisc(cx - s, cy, s);
   u8g2.drawDisc(cx + s - 1, cy, s - 1);
   u8g2.drawDisc(cx, cy - s + 1, s);
   u8g2.drawBox(cx - s, cy, s * 2, s);
 }
+
 static void wxDrawSun(int cx, int cy, int r) {
   u8g2.drawDisc(cx, cy, r);
   for (int i = 0; i < 8; i++) {
@@ -17,12 +20,14 @@ static void wxDrawSun(int cx, int cy, int r) {
     cline(x1, y1, x2, y2);
   }
 }
+
 static void wxDrawMoon(int cx, int cy, int r) {
   u8g2.drawDisc(cx, cy, r);
   u8g2.setDrawColor(0);
   u8g2.drawDisc(cx + r - 2, cy - 2, r);
   u8g2.setDrawColor(1);
 }
+
 static void wxDrawIcon(uint8_t ic, int cx, int cy, bool day) {
   float t = millis() * 0.001f;
   switch (ic) {
@@ -74,10 +79,10 @@ static void wxDrawIcon(uint8_t ic, int cx, int cy, bool day) {
 void WeatherFace::draw() {
   char buf[36];
   u8g2.setFont(u8g2_font_5x7_tf);
-  dStr(0, 7, cityLabel());
+  dStr(0, 7, WeatherService::city_label());
 
   if (!wthr.valid) {
-    dStrRight(W, 7, WiFi.status() == WL_CONNECTED ? "FETCHING" : "NO LINK");
+    dStrRight(W, 7, NetworkStatus::is_connected() ? "FETCHING" : "NO LINK");
     dDashed(0, 10, W);
     u8g2.setFont(u8g2_font_6x10_tf);
     const char *m = cfg.haveLoc ? "NO WEATHER DATA" : "NO LOCATION SET";

@@ -1,5 +1,6 @@
 #include "decrypt_face.h"
 #include "esphome/components/orbital_clock/clock_face_context.h"
+#include "esphome/components/orbital_clock/network_status.h"
 
 uint8_t DecryptFace::previous_[6] = { 99, 99, 99, 99, 99, 99 };
 uint32_t DecryptFace::lock_until_[6] = {};
@@ -91,7 +92,7 @@ void DecryptFace::draw() {
   snprintf(buf, sizeof(buf), "%uMHZ", (unsigned)getCpuFrequencyMhz());
   dStr((W - strW(buf)) / 2, 62, buf);
 
-  if (WiFi.status() == WL_CONNECTED) snprintf(buf, sizeof(buf), "%ddBm", (int)WiFi.RSSI());
+  if (NetworkStatus::is_connected()) snprintf(buf, sizeof(buf), "%ddBm", (int)NetworkStatus::rssi());
   else                               snprintf(buf, sizeof(buf), "NO LINK");
   dStrRight(W, 62, buf);
 }
