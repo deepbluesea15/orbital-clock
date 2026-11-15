@@ -20,6 +20,12 @@ consolidated into a `NetworkStatus` adapter class that wraps ESPHome's Wi-Fi
 component. This decouples the display faces from Arduino WiFi APIs and makes
 testing easier.
 
+### Runtime and Button
+ESPHome schedules the display frames and settings synchronization instead of
+polling both on every component loop. The BOOT pin is an ESPHome GPIO binary
+sensor; ESPHome automations handle the hold delays and restart action, while
+`ButtonController` retains tap/hold state and the reset-progress overlay.
+
 ### Weather
 Weather requests use ESPHome's `http_request` component, JSON utilities, and
 global preferences for the location cache. Network I/O stays on a background

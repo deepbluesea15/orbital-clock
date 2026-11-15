@@ -35,6 +35,42 @@ api:
 ota:
   - platform: esphome
 
+binary_sensor:
+  - platform: gpio
+    id: boot_button
+    internal: true
+    pin:
+      number: GPIO0
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    filters:
+      - delayed_on_off: 10ms
+    on_press:
+      then:
+        - lambda: id(clock_controller).boot_button_pressed();
+        - delay: 800ms
+        - if:
+            condition:
+              binary_sensor.is_on: boot_button
+            then:
+              - lambda: id(clock_controller).boot_button_format_hold();
+              - delay: 7200ms
+              - if:
+                  condition:
+                    binary_sensor.is_on: boot_button
+                  then:
+                    - if:
+                        condition:
+                          lambda: return id(clock_controller).boot_button_factory_reset();
+                        then:
+                          - delay: 1400ms
+                          - button.press: orbital_restart
+    on_release:
+      then:
+        - lambda: id(clock_controller).boot_button_released();
+
 select:
   - platform: template
     id: orbital_face
@@ -148,6 +184,10 @@ text:
       - lambda: id(clock_controller).set_city(x);
 
 button:
+  - platform: restart
+    id: orbital_restart
+    internal: true
+
   - platform: template
     name: Reset clock settings
     on_press:

@@ -70,12 +70,10 @@ static const bool     ANTI_BURNIN  = true;
 #define PIN_CS    10
 #define PIN_DC     9
 #define PIN_RST    8
-#define PIN_BTN    0
 
 U8G2_SSD1309_128X64_NONAME0_F_4W_HW_SPI u8g2(U8G2_R0, PIN_CS, PIN_DC, PIN_RST);
 
 extern const int W = 128, H = 64;
-static const uint16_t FRAME_MS = 40;
 const struct tm &tnow = TimeService::now();
 
 static const char *FACE_NAMES[FACE_COUNT] = {
@@ -89,7 +87,6 @@ static const char *FACE_NAMES[FACE_COUNT] = {
 static uint8_t face = FACE_NEON;
 static uint32_t labelUntil = 0;
 
-static uint32_t lastFrame  = 0;
 static uint32_t lastFaceSw = 0;
 uint32_t bootMillis = 0;
 int gOfsX = 0, gOfsY = 0;
@@ -100,6 +97,7 @@ static bool fmtFlash = false;
 static Starfield starfield;
 static ButtonController button_controller;
 static uint32_t face_flush_at = 0;
+static bool reset_message = false;
 
 const char *DOW[7]  = { "SUN","MON","TUE","WED","THU","FRI","SAT" };
 const char *MON[12] = { "JAN","FEB","MAR","APR","MAY","JUN",
@@ -192,6 +190,17 @@ void orbital_set_city(const char *city) {
   WeatherService::set_city(city);
 }
 
+void orbital_button_pressed() { button_controller.press(); }
+
+void orbital_button_released() { button_controller.release(); }
+
+void orbital_button_format_hold() { button_controller.format_hold(); }
+
+bool orbital_button_factory_reset() {
+  reset_message = button_controller.factory_reset();
+  return reset_message;
+}
+
 const char *orbital_current_face() { 
   return FACE_NAMES[face]; 
 }
@@ -213,9 +222,7 @@ void orbital_sketch_setup() { ClockRuntime::setup(); }
 void orbital_sketch_loop() { ClockRuntime::loop(); }
 
 void ClockRuntime::setup() {
-  Serial.begin(115200);
   bootMillis = millis();
-  pinMode(PIN_BTN, INPUT_PULLUP);
   randomSeed(esp_random());
 
   SPI.begin(PIN_SCK, -1, PIN_MOSI, PIN_CS);
@@ -233,18 +240,12 @@ void ClockRuntime::setup() {
   TimeService::tick();
   WeatherService::start();
 
-  lastFrame = millis();
 }
 
 void ClockRuntime::loop() {
-  button_controller.handle();
-
   if (FACE_AUTO_MS && millis() - lastFaceSw > FACE_AUTO_MS) {
     orbital_next_face();
   }
-
-  if (millis() - lastFrame < FRAME_MS) return;
-  lastFrame = millis();
 
   {
     esphome::LockGuard lock(WeatherService::state_mutex());
@@ -264,6 +265,16 @@ void ClockRuntime::loop() {
 
   starfield.step();
   u8g2.clearBuffer();
+
+  if (reset_message) {
+    u8g2.setFont(u8g2_font_6x10_tf);
+    const char *reset = "SETTINGS RESET";
+    const char *restart = "RESTARTING";
+    u8g2.drawStr((W - u8g2.getStrWidth(reset)) / 2, 28, reset);
+    u8g2.drawStr((W - u8g2.getStrWidth(restart)) / 2, 42, restart);
+    u8g2.sendBuffer();
+    return;
+  }
 
   if (!TimeService::is_valid()) {
     u8g2.setFont(u8g2_font_6x10_tf);

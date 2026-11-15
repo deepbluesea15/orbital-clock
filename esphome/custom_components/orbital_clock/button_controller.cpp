@@ -7,7 +7,6 @@
 
 namespace {
 
-constexpr uint8_t PIN_BTN = 0;
 constexpr uint32_t HOLD_FORMAT_MS = 800;
 constexpr uint32_t HOLD_RESET_MS = 8000;
 constexpr uint32_t HOLD_WARN_MS = 1800;
@@ -22,37 +21,34 @@ void ButtonController::next_face() { orbital_next_face(); }
 
 void ButtonController::toggle_time_format() { orbital_toggle_time_format(); }
 
-void ButtonController::factory_reset() {
+bool ButtonController::factory_reset() {
+  if (!this->button_down_ || this->held_ms() < HOLD_RESET_MS) return false;
   orbital_reset_settings();
-  u8g2.clearBuffer();
-  u8g2.setFont(u8g2_font_6x10_tf);
-  const char *reset = "SETTINGS RESET";
-  const char *restart = "RESTARTING";
-  u8g2.drawStr((W - u8g2.getStrWidth(reset)) / 2, 28, reset);
-  u8g2.drawStr((W - u8g2.getStrWidth(restart)) / 2, 42, restart);
-  u8g2.sendBuffer();
-  delay(1400);
-  ESP.restart();
+  return true;
 }
 
-void ButtonController::handle() {
-  bool pressed = digitalRead(PIN_BTN) == LOW;
+void ButtonController::press() {
+  if (this->button_down_) return;
+  this->button_down_ = true;
+  this->button_down_at_ = millis();
+  this->long_fired_ = false;
+}
 
-  if (pressed && !this->button_down_) {
-    this->button_down_ = true;
-    this->button_down_at_ = millis();
-    this->long_fired_ = false;
-  } else if (pressed && this->button_down_) {
-    uint32_t held = millis() - this->button_down_at_;
-    if (!this->long_fired_ && held > HOLD_FORMAT_MS) {
-      this->long_fired_ = true;
-      this->toggle_time_format();
-    }
-    if (held >= HOLD_RESET_MS) this->factory_reset();
-  } else if (!pressed && this->button_down_) {
-    this->button_down_ = false;
-    if (!this->long_fired_ && millis() - this->button_down_at_ > 40) this->next_face();
+void ButtonController::release() {
+  if (!this->button_down_) return;
+  uint32_t held = this->held_ms();
+  if (!this->long_fired_ && held >= HOLD_FORMAT_MS) {
+    this->long_fired_ = true;
+    this->toggle_time_format();
   }
+  this->button_down_ = false;
+  if (!this->long_fired_ && held > 40) this->next_face();
+}
+
+void ButtonController::format_hold() {
+  if (!this->button_down_ || this->long_fired_ || this->held_ms() < HOLD_FORMAT_MS) return;
+  this->long_fired_ = true;
+  this->toggle_time_format();
 }
 
 void ButtonController::draw_reset_overlay() {

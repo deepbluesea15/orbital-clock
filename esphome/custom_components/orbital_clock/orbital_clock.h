@@ -22,7 +22,6 @@ namespace orbital_clock {
 class OrbitalClock : public Component {
  public:
   void setup() override;
-  void loop() override;
   float get_setup_priority() const override { return setup_priority::LATE; }
 
   void set_face_select(select::Select *entity) { settings_.set_face_select(entity); }
@@ -39,6 +38,10 @@ class OrbitalClock : public Component {
   void set_timezone(const std::string &value) { settings_.set_timezone(value, display_, weather_); }
   void set_city(const std::string &value) { settings_.set_city(value, display_, weather_); }
   void reset_settings() { settings_.reset(display_, weather_); }
+  void boot_button_pressed();
+  void boot_button_released();
+  void boot_button_format_hold();
+  bool boot_button_factory_reset();
 
  private:
   ClockSettings settings_;
