@@ -253,8 +253,8 @@ button:
 external_components:
   - source:
       type: git
-      url: https://github.com/arikalish/orbital-clock.git
-      ref: esphome
+      url: https://github.com/arikalish/orbital-clock-esphome.git
+      ref: main
       path: esphome/custom_components
     components: [orbital_clock, orbital_clock_faces]
     refresh: always

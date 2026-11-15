@@ -123,14 +123,14 @@ remains separately in `../OrbitalClock/OrbitalClock.ino`.
 
 ### ESPHome Dashboard
 
-After the `esphome` branch containing these changes is pushed to GitHub,
-create a device YAML in the ESPHome Dashboard:
+After these changes are merged and pushed to `main` on GitHub, create a device
+YAML in the ESPHome Dashboard:
 
 ```yaml
 packages:
   orbital_clock:
-    url: https://github.com/arikalish/orbital-clock.git
-    ref: esphome
+    url: https://github.com/arikalish/orbital-clock-esphome.git
+    ref: main
     files: [esphome/orbital-clock.yaml]
     refresh: always
 
@@ -164,15 +164,15 @@ Fill in the secrets file, then validate and build/flash:
 & .\.venv\Scripts\esphome.exe run esphome/orbital-clock.yaml
 ```
 
-The YAML fetches the `esphome` branch from GitHub for its external components;
-push component changes before testing them with this configuration.
+The YAML fetches the `main` branch from GitHub for its external components;
+merge and push component changes before testing them with this configuration.
 `esphome run` builds and flashes over USB on first install, then can use OTA for
 subsequent updates.
 Serial logs are enabled on the ESP32-S3 USB Serial/JTAG interface at 115200 baud.
 
 ## Refactoring Summary
 
-This refactoring (branch `esphome`) completes the transition
+This refactoring completes the transition
 from Arduino sketch-based time/Wi-Fi management to ESPHome component integration:
 
 ### Completed

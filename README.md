@@ -8,6 +8,8 @@ The ESPHome firmware integrates with Home Assistant. The original standalone
 Arduino sketch is also available; its setup instructions appear below. The
 conversion to ESPHome was performed with GitHub Copilot.
 
+This project is forked from [deepbluesea15/orbital-clock](https://github.com/deepbluesea15/orbital-clock).
+
 ## Faces
 
 Tap the BOOT button to cycle. The face you leave it on is remembered across
@@ -63,7 +65,7 @@ of the sketch. Avoid GPIO19/20 (USB), GPIO43/44 (UART0) and GPIO46.
 
 ## ESPHome and Home Assistant
 
-The ESPHome configuration and custom components live on the `esphome` branch.
+The ESPHome configuration and custom components are on the `main` branch.
 For more details, see the [ESPHome guide](esphome/README.md).
 
 ### ESPHome Dashboard
@@ -73,8 +75,8 @@ Create a device in the ESPHome Dashboard and use this YAML:
 ```yaml
 packages:
   orbital_clock:
-    url: https://github.com/arikalish/orbital-clock.git
-    ref: esphome
+    url: https://github.com/arikalish/orbital-clock-esphome.git
+    ref: main
     files: [esphome/orbital-clock.yaml]
     refresh: always
 
@@ -97,12 +99,12 @@ the first OTA upload.
 
 ### Build locally
 
-Install ESPHome, clone the `esphome` branch, and create the ignored secrets
+Install ESPHome, clone the repository, and create the ignored secrets
 file from the example:
 
 ```powershell
-git clone --branch esphome https://github.com/arikalish/orbital-clock.git
-Set-Location orbital-clock
+git clone https://github.com/arikalish/orbital-clock-esphome.git
+Set-Location orbital-clock-esphome
 Copy-Item esphome\secrets.yaml.example esphome\secrets.yaml
 ```
 
@@ -121,10 +123,11 @@ esphome run esphome\orbital-clock.yaml
 ```
 
 The configuration fetches its external components from the published
-`esphome` branch, so push component changes before testing them with it. Build
-outputs, including `firmware.factory.bin` and `firmware.ota.bin`, are under
-`esphome\.esphome\build\orbital-clock\build`. Serial logs use USB Serial/JTAG at
-115200 baud. If USB flashing does not restart the board, power-cycle it.
+`main` branch, so merge and push component changes before testing them with it.
+Build outputs, including `firmware.factory.bin` and `firmware.ota.bin`, are
+under `esphome\.esphome\build\orbital-clock\build`. Serial logs use USB
+Serial/JTAG at 115200 baud. If USB flashing does not restart the board,
+power-cycle it.
 
 In Home Assistant, choose the clock face, time format, weather location and
 units, time zone, day/night brightness and schedule, and face rotation interval.
@@ -137,7 +140,7 @@ eight-second hold resets clock settings.
 ### Option A — prebuilt binary, nothing to install
 
 1. Grab `OrbitalClockv1.0.bin` from the
-   [Releases](../../releases) page.
+   [original project's Releases](https://github.com/deepbluesea15/orbital-clock/releases) page.
 2. Open [web.esphome.io](https://web.esphome.io/) or
    [esptool-js](https://espressif.github.io/esptool-js/) in Chrome or Edge.
 3. Connect, pick the board's serial port, choose **Install from file**, select
