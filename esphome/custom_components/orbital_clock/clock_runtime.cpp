@@ -78,6 +78,21 @@ U8G2_SSD1309_128X64_NONAME0_F_4W_HW_SPI u8g2(U8G2_R0, PIN_CS, PIN_DC, PIN_RST);
 extern const int W = 128, H = 64;
 static const uint16_t FRAME_MS = 40;
 
+struct tm tnow;
+static uint32_t second_mark_ms = 0;
+
+int hour12(int hour) {
+  if (hour == 0) return 12;
+  if (hour > 12) return hour - 12;
+  return hour;
+}
+
+float subSecond() {
+  uint32_t now_ms = millis();
+  uint32_t ms_into_second = (now_ms - second_mark_ms) % 1000;
+  return ms_into_second / 1000.0f;
+}
+
 static const char *FACE_NAMES[FACE_COUNT] = {
   "NEON", "DIGITAL", "ANALOG", "FLIPCLOCK", "WORDCLOCK",
   "RAIN", "DECRYPT",
@@ -244,18 +259,6 @@ const char *orbital_current_city() {
   return WeatherService::current_city(); 
 }
 
-void orbital_reset_settings() {
-  use24h = false;
-  face = FACE_NEON;
-  labelUntil = millis() + 1000;
-  cfg.city = "";
-  cfg.tz = "auto";
-  cfg.lat = 0;
-  cfg.lon = 0;
-  cfg.haveLoc = false;
-  cfg.metric = true;
-}
-
 // Entry points for sketch and ESPHome component
 void orbital_sketch_setup() { ClockRuntime::setup(); }
 void orbital_sketch_loop() { ClockRuntime::loop(); }
@@ -304,6 +307,14 @@ void ClockRuntime::loop() {
 
   static int lastBright = -1;
   const struct tm &now = TimeService::now();
+  
+  // Update global tnow for faces
+  // Track when seconds change for smooth sub-second animation
+  if (now.tm_sec != tnow.tm_sec) {
+    second_mark_ms = millis();
+  }
+  tnow = now;
+  
   int want = (now.tm_hour >= 22 || now.tm_hour < 7) ? BRIGHT_NIGHT : BRIGHT_DAY;
   if (want != lastBright) { lastBright = want; u8g2.setContrast(want); }
 
