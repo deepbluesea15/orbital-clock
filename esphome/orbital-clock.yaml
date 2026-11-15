@@ -200,7 +200,8 @@ external_components:
     components: [orbital_clock]
 
 logger:
-  baud_rate: 0
+  baud_rate: 115200
+  hardware_uart: USB_SERIAL_JTAG
 
 time:
   - platform: sntp

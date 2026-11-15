@@ -108,6 +108,7 @@ Fill in the secrets file, then validate and build/flash:
 
 `esphome run` builds and flashes over USB on first install, then can use OTA for
 subsequent updates.
+Serial logs are enabled on the ESP32-S3 USB Serial/JTAG interface at 115200 baud.
 
 ## Refactoring Summary
 
