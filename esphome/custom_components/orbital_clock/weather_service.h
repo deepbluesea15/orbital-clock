@@ -17,13 +17,13 @@ class WeatherService {
   static const char *city_label();
   static uint8_t icon(int code);
   static const char *label(int code);
+  static WxData &data() { return data_; }
+  static TaskHandle_t task_handle_;
+  static WxData data_;
 
  private:
   static void task(void *argument);
   static bool geocode_city();
   static void fetch();
   static void save_location(float latitude, float longitude, const String &city, const String &timezone);
-
-  static TaskHandle_t task_handle_;
-  static WxData data_;
 };

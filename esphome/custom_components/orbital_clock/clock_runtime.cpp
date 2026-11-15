@@ -105,10 +105,6 @@ const char *DOW[7]  = { "SUN","MON","TUE","WED","THU","FRI","SAT" };
 const char *MON[12] = { "JAN","FEB","MAR","APR","MAY","JUN",
                                "JUL","AUG","SEP","OCT","NOV","DEC" };
 
-// Global weather data (shared with faces)
-Cfg cfg;
-WxData wthr;
-
 // Apply glitch effect to display buffer
 static void applyGlitch() {
   if (!GLITCH_FX) return;
