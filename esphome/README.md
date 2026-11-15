@@ -87,15 +87,39 @@ startup and frame updates, `ButtonController` owns BOOT-button behavior,
 `WeatherService` owns geocoding and weather fetching, and `ClockFaces` dispatches
 the selected renderer. Each face implements the abstract `ClockFace::draw()`
 interface with a matching `.h` declaration and `.cpp` implementation under
-`custom_components/orbital_clock/faces/` (`NeonFace`, `DigitalFace`, `AnalogFace`,
+`custom_components/orbital_clock_faces/` (`NeonFace`, `DigitalFace`, `AnalogFace`,
 and the other face classes). Animated state such as rain columns, flip tiles,
 bounce counters, and jellyfish positions is held by the owning face class.
+The face sources are packaged as the `orbital_clock_faces` ESPHome external
+component so they can be fetched alongside `orbital_clock`.
 `DisplayEngine` and `WeatherService` are
 interfaces at the ESPHome boundary; `SketchDisplayEngine` and
 `SketchWeatherService` adapt the runtime to them. The original Arduino sketch
 remains separately in `../OrbitalClock/OrbitalClock.ino`.
 
 ## Build
+
+### ESPHome Dashboard
+
+After the `esphome` branch containing these changes is pushed to GitHub,
+create a device YAML in the ESPHome Dashboard:
+
+```yaml
+packages:
+  orbital_clock: github://arikalish/orbital-clock/esphome/orbital-clock.yaml@esphome
+
+esphome:
+  name: orbital-clock
+  friendly_name: Orbital Clock
+```
+
+Add the same secrets listed in `secrets.yaml.example` to the Dashboard's
+`secrets.yaml`. ESPHome downloads both the package and its external components
+from GitHub; the Dashboard does not need a local copy of the source. The
+`esphome.name` and `friendly_name` entries can be changed per device. For
+the first OTA upload after a hostname change, use the device's old address.
+
+### Local build
 
 From the project root, create a local ESPHome environment and set `esphome/secrets.yaml`:
 
@@ -113,13 +137,15 @@ Fill in the secrets file, then validate and build/flash:
 & .\.venv\Scripts\esphome.exe run esphome/orbital-clock.yaml
 ```
 
+The YAML fetches the `esphome` branch from GitHub for its external components;
+push component changes before testing them with this configuration.
 `esphome run` builds and flashes over USB on first install, then can use OTA for
 subsequent updates.
 Serial logs are enabled on the ESP32-S3 USB Serial/JTAG interface at 115200 baud.
 
 ## Refactoring Summary
 
-This refactoring (branch `refactor/esphome-separation`) completes the transition 
+This refactoring (branch `esphome`) completes the transition
 from Arduino sketch-based time/Wi-Fi management to ESPHome component integration:
 
 ### Completed

@@ -4,6 +4,7 @@ from esphome.components import datetime, http_request, number, select, sun, text
 from esphome.const import CONF_ID
 
 DEPENDENCIES = ["http_request", "sun", "time", "wifi"]
+AUTO_LOAD = ["orbital_clock_faces"]
 
 orbital_clock_ns = cg.esphome_ns.namespace("orbital_clock")
 OrbitalClock = orbital_clock_ns.class_("OrbitalClock", cg.Component)
