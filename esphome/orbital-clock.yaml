@@ -35,6 +35,7 @@ api:
 
 ota:
   - platform: esphome
+    encryption:
 
 binary_sensor:
   - platform: gpio
