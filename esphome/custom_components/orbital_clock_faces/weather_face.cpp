@@ -76,10 +76,16 @@ void WeatherFace::draw() {
   dStr(0, 7, WeatherService::city_label());
 
   if (!wthr.valid) {
-    dStrRight(W, 7, NetworkStatus::is_connected() ? "FETCHING" : "NO LINK");
+    const char *status = !NetworkStatus::is_connected() ? "NO LINK"
+                       : cfg.haveLoc ? "FETCHING"
+                       : !cfg.city.length() ? "NO LOCATION"
+                       : cfg.location_status == LocationStatus::NOT_FOUND ? "NO MATCH"
+                       : cfg.location_status == LocationStatus::ERROR ? "ERROR"
+                       : "LOCATING";
+    dStrRight(W, 7, status);
     dDashed(0, 10, W);
     u8g2.setFont(u8g2_font_6x10_tf);
-    const char *m = cfg.haveLoc ? "NO WEATHER DATA" : "NO LOCATION SET";
+    const char *m = cfg.haveLoc ? "NO WEATHER DATA" : WeatherService::location_message();
     dStr((W - strW(m)) / 2, 34, m);
     u8g2.setFont(u8g2_font_4x6_tr);
     snprintf(buf, sizeof(buf), "TRIES %lu  FAILS %lu",
@@ -109,7 +115,8 @@ void WeatherFace::draw() {
   dStr(50, 47, WeatherService::label(wthr.code));
 
   u8g2.setFont(u8g2_font_4x6_tr);
-  snprintf(buf, sizeof(buf), "H%d L%d", (int)lroundf(wthr.hiF), (int)lroundf(wthr.loF));
+  if (wthr.highLowValid) snprintf(buf, sizeof(buf), "H%d L%d", (int)lroundf(wthr.hiF), (int)lroundf(wthr.loF));
+  else snprintf(buf, sizeof(buf), "H-- L--");
   dStr(0, 62, buf);
   snprintf(buf, sizeof(buf), "FEELS %d", (int)lroundf(wthr.feelF));
   dStr(44, 62, buf);

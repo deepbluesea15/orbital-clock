@@ -59,7 +59,7 @@ void ForecastFace::draw() {
 
   if (!wthr.valid || wthr.fcDays == 0) {
     u8g2.setFont(u8g2_font_6x10_tf);
-    const char *m = !cfg.haveLoc ? "NO LOCATION SET"
+    const char *m = !cfg.haveLoc ? WeatherService::location_message()
                   : (wthr.valid ? "NO FORECAST DATA" : "AWAITING UPLINK");
     dStr((W - strW(m)) / 2, 38, m);
     return;
@@ -73,8 +73,9 @@ void ForecastFace::draw() {
       u8g2.drawPixel((cx[i] + cx[i - 1]) / 2, y);
 
     u8g2.setFont(u8g2_font_4x6_tr);
-    const char *d = (i == 0) ? "TODAY" : DOW[(tnow.tm_wday + i) % 7];
-    dStr(cx[i] - strW(d) / 2, 20, d);
+    snprintf(buf, sizeof(buf), "%02u/%02u", static_cast<unsigned>(wthr.fcMonth[i]),
+             static_cast<unsigned>(wthr.fcDay[i]));
+    dStr(cx[i] - strW(buf) / 2, 20, buf);
 
     wxIconSmall(WeatherService::icon(wthr.fcCode[i]), cx[i], 34);
 

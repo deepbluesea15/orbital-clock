@@ -38,6 +38,15 @@ global preferences for the location cache. Network I/O stays on a background
 task so slow requests do not block display updates; shared weather and location
 state is protected while it is read or updated. A Wi-Fi connection wakes the
 weather task immediately instead of waiting for its next scheduled retry.
+Location-cache writes, Sun coordinates, and automatic timezone updates run on
+the ESPHome main loop alongside other preferences and time services.
+Failed weather or location requests retain the last successful conditions and
+retry with jittered exponential backoff, starting around one minute and
+capping at 15 minutes. Changing settings or reconnecting Wi-Fi wakes the task
+immediately.
+The forecast shows the dates supplied for the weather location, independently
+of the clock's selected time zone. Location lookup failures are shown on the
+weather, forecast, and Solar faces and recorded in the logs.
 
 ### Configuration
 

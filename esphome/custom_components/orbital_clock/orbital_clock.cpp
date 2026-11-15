@@ -31,9 +31,12 @@ void OrbitalClock::setup() {
 		this->display_.loop();
 	});
 	this->set_interval("settings_sync", 1000, [this]() {
+		::WeatherService::save_pending_location();
 		this->settings_.sync(this->display_, this->weather_);
 	});
 }
+
+void OrbitalClock::on_shutdown() { ::WeatherService::save_pending_location(true); }
 
 void OrbitalClock::reset_settings() {
 	this->settings_.reset(this->display_, this->weather_);
@@ -44,7 +47,7 @@ void OrbitalClock::reset_settings() {
 	this->rotation_interval_->make_call().set_value(0).perform();
 }
 
-void OrbitalClock::network_connected() { ::WeatherService::request(); }
+void OrbitalClock::network_connected() { ::WeatherService::set_network_connected(true); }
 
 void OrbitalClock::boot_button_pressed() { orbital_button_pressed(); }
 

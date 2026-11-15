@@ -4,6 +4,7 @@
 #include <U8g2lib.h>
 #include <time.h>
 #include "time_service.h"
+#include "weather_location.h"
 
 #define CALLSIGN "NX-01"
 
@@ -12,14 +13,17 @@ struct Cfg {
   float lat = 0, lon = 0;
   bool haveLoc = false;
   bool metric = true;
+  LocationStatus location_status = LocationStatus::PENDING;
 };
 
 struct WxData {
   bool valid = false;
+  bool highLowValid = false;
   float tempF = 0, feelF = 0, hiF = 0, loF = 0, wind = 0, hum = 0;
   int code = 0, isDay = 1;
   float fcHi[5], fcLo[5];
   int fcCode[5];
+  uint8_t fcMonth[5], fcDay[5];
   int fcDays = 0;
   uint32_t stamp = 0;
   uint32_t tries = 0, fails = 0;

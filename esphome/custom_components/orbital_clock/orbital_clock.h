@@ -27,6 +27,7 @@ namespace orbital_clock {
 class OrbitalClock : public Component {
  public:
   void setup() override;
+  void on_shutdown() override;
   float get_setup_priority() const override { return setup_priority::LATE; }
 
   void set_face_select(select::Select *entity) { settings_.set_face_select(entity); }

@@ -249,6 +249,7 @@ void ClockRuntime::setup() {
   
   WeatherService::load();
   TimeService::tick();
+  WeatherService::set_network_connected(NetworkStatus::is_connected());
   WeatherService::start();
 
 }
@@ -267,6 +268,8 @@ void ClockRuntime::set_display_settings(uint8_t day, uint8_t night, uint32_t sta
 }
 
 void ClockRuntime::loop() {
+  WeatherService::set_network_connected(NetworkStatus::is_connected());
+  WeatherService::apply_pending_location();
   if (display_schedule::rotation_due(millis(), lastFaceSw, face_auto_ms)) {
     orbital_next_face();
   }

@@ -45,7 +45,7 @@ void SolarFace::draw() {
 
   if (!cfg.haveLoc) {
     u8g2.setFont(u8g2_font_6x10_tf);
-    const char *m = "NO LOCATION SET";
+    const char *m = WeatherService::location_message();
     dStr((W - strW(m)) / 2, 36, m);
     return;
   }
