@@ -235,6 +235,7 @@ void ClockRuntime::setup() {
   u8g2.sendBuffer();
 
   starfield.initialize();
+  ClockFaces::initialize();
   
   WeatherService::load();
   TimeService::tick();
