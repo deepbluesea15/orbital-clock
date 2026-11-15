@@ -98,6 +98,8 @@ Home Assistant entities. Holding BOOT for eight seconds resets the same clock
 settings as the Home Assistant button.
 At startup, the display shows a short terminal sequence with the current
 network and time synchronization status before switching to the clock.
+On the BOUNCE face, each non-corner hit has a 1-in-25 chance of aiming the
+clock toward a corner; the display counts both hits and corner hits.
 
 ## Code structure
 

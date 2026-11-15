@@ -40,7 +40,7 @@ class BounceMotion {
       ++hits_;
       if (hit_x && hit_y) ++corners_;
       vary_velocity(random_value);
-      if (!(hit_x && hit_y) && (random_value / 72) % 6 == 0) {
+      if (!(hit_x && hit_y) && (random_value / 72) % 25 == 0) {
         // Aim across both axes so the next collision reaches an actual corner.
         target_x_ = x_ < max_x / 2 ? max_x : 0;
         target_y_ = y_ < max_y / 2 ? max_y : 0;
