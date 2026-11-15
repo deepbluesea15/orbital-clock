@@ -36,7 +36,8 @@ sensor; ESPHome automations handle the hold delays and restart action, while
 Weather requests use ESPHome's `http_request` component, JSON utilities, and
 global preferences for the location cache. Network I/O stays on a background
 task so slow requests do not block display updates; shared weather and location
-state is protected while it is read or updated.
+state is protected while it is read or updated. A Wi-Fi connection wakes the
+weather task immediately instead of waiting for its next scheduled retry.
 
 ### Configuration
 

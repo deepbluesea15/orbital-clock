@@ -93,7 +93,7 @@ void SolarFace::draw() {
     dDisc(sx, sy, 3);
     for (int i = 0; i < 8; i++) {
       float t = i * 0.785398f;
-      cline(sx + (int)(5 * cosf(t)), sy + (int)(5 * sinf(t)),
+      dCLine(sx + (int)(5 * cosf(t)), sy + (int)(5 * sinf(t)),
             sx + (int)(7 * cosf(t)), sy + (int)(7 * sinf(t)));
     }
     for (int y = sy + 9; y < 54; y += 3) dPixel(sx, y);

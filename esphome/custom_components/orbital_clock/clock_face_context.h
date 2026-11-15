@@ -74,7 +74,7 @@ inline uint8_t face_outcode(int x, int y) {
 inline void cline(int x0, int y0, int x1, int y1) {
   uint8_t code0 = face_outcode(x0, y0), code1 = face_outcode(x1, y1);
   for (int guard = 0; guard < 8; guard++) {
-    if (!(code0 | code1)) { u8g2.drawLine(x0 + gOfsX, y0 + gOfsY, x1 + gOfsX, y1 + gOfsY); return; }
+    if (!(code0 | code1)) { u8g2.drawLine(x0, y0, x1, y1); return; }
     if (code0 & code1) return;
     uint8_t code = code0 ? code0 : code1;
     int x = 0, y = 0;
@@ -85,4 +85,8 @@ inline void cline(int x0, int y0, int x1, int y1) {
     if (code == code0) { x0 = x; y0 = y; code0 = face_outcode(x0, y0); }
     else               { x1 = x; y1 = y; code1 = face_outcode(x1, y1); }
   }
+}
+
+inline void dCLine(int x0, int y0, int x1, int y1) {
+  cline(x0 + gOfsX, y0 + gOfsY, x1 + gOfsX, y1 + gOfsY);
 }

@@ -48,6 +48,7 @@ class OrbitalClock : public Component {
   void set_units(const std::string &value) { settings_.set_units(value, display_, weather_); }
   void set_timezone(const std::string &value) { settings_.set_timezone(value, display_, weather_); }
   void set_city(const std::string &value) { settings_.set_city(value, display_, weather_); }
+  void network_connected();
   void reset_settings();
   void boot_button_pressed();
   void boot_button_released();

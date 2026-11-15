@@ -10,7 +10,7 @@ void AnalogFace::draw() {
   for (int i = 0; i < 60; i++) {
     float a = (i * 6 - 90) * 0.01745329f;
     if (i % 5 == 0)
-      cline((int)(cx + (R - 5) * cosf(a)), (int)(cy + (R - 5) * sinf(a)),
+      dCLine((int)(cx + (R - 5) * cosf(a)), (int)(cy + (R - 5) * sinf(a)),
             (int)(cx + (R - 2) * cosf(a)), (int)(cy + (R - 2) * sinf(a)));
     else
       dPixel((int)(cx + (R - 3) * cosf(a)), (int)(cy + (R - 3) * sinf(a)));
@@ -35,7 +35,7 @@ void AnalogFace::draw() {
                       cx + px + gOfsX, cy + py + gOfsY,
                       cx - px + gOfsX, cy - py + gOfsY);
   }
-  cline((int)(cx - 5 * cosf(as)), (int)(cy - 5 * sinf(as)),
+  dCLine((int)(cx - 5 * cosf(as)), (int)(cy - 5 * sinf(as)),
         (int)(cx + (R - 4) * cosf(as)), (int)(cy + (R - 4) * sinf(as)));
   dDisc(cx, cy, 2);
 

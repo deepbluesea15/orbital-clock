@@ -44,6 +44,8 @@ void OrbitalClock::reset_settings() {
 	this->rotation_interval_->make_call().set_value(0).perform();
 }
 
+void OrbitalClock::network_connected() { ::WeatherService::request(); }
+
 void OrbitalClock::boot_button_pressed() { orbital_button_pressed(); }
 
 void OrbitalClock::boot_button_released() { orbital_button_released(); }

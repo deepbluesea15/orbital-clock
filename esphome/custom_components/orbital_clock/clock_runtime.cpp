@@ -159,6 +159,7 @@ void orbital_set_face(const char *name) {
     if (strcmp(name, FACE_NAMES[i]) == 0) {
       lastFaceSw = millis();
       face = i;
+      fmtFlash = false;
       labelUntil = millis() + 1000;
       return;
     }

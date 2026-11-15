@@ -21,6 +21,8 @@ wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
   reboot_timeout: 0s
+  on_connect:
+    - lambda: id(clock_controller).network_connected();
   ap:
     ssid: ORBITAL-SETUP
     password: !secret fallback_ap_password
