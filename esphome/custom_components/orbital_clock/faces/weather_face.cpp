@@ -4,13 +4,6 @@
 #include "esphome/components/orbital_clock/weather_service.h"
 
 // weather icon drawing helpers
-static void wxDrawCloud(int cx, int cy, int s) {
-  u8g2.drawDisc(cx - s, cy, s);
-  u8g2.drawDisc(cx + s - 1, cy, s - 1);
-  u8g2.drawDisc(cx, cy - s + 1, s);
-  u8g2.drawBox(cx - s, cy, s * 2, s);
-}
-
 static void wxDrawSun(int cx, int cy, int r) {
   u8g2.drawDisc(cx, cy, r);
   for (int i = 0; i < 8; i++) {
