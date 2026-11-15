@@ -32,7 +32,7 @@ power cycles.
 | 15 | FLYOVER | Wireframe terrain scrolling toward you under a crescent moon |
 | 16 | TESSERACT | A rotating 4D hypercube, projected 4D→3D→2D |
 | 17 | JELLYFISH | Drifting jellies with pulsing bells and rising bubbles |
-| 18 | BOUNCE | The screensaver, carrying the time. Counts bounces, and separately corner hits |
+| 18 | BOUNCE | A time-carrying screensaver with varied rebounds; counts hits and occasional corners |
 
 ## Hardware
 
