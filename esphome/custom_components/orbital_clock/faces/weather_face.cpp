@@ -2,6 +2,7 @@
 #include "esphome/components/orbital_clock/clock_face_context.h"
 #include "esphome/components/orbital_clock/network_status.h"
 #include "esphome/components/orbital_clock/weather_service.h"
+#include "esphome/components/orbital_clock/weather_icons.h"
 
 // weather icon drawing helpers
 static void wxDrawSun(int cx, int cy, int r) {
@@ -93,7 +94,7 @@ void WeatherFace::draw() {
   dStrRight(W, 7, buf);
   dDashed(0, 10, W);
 
-  wxDrawIcon(wxIcon(wthr.code), 23, 31, wthr.isDay != 0);
+  wxDrawIcon(WeatherService::icon(wthr.code), 23, 31, wthr.isDay != 0);
 
   // temperature, with a hand-drawn degree mark
   snprintf(buf, sizeof(buf), "%d", (int)lroundf(wthr.tempF));
@@ -105,7 +106,7 @@ void WeatherFace::draw() {
   dStr(50 + tw + 8, 24, cfg.metric ? "C" : "F");
 
   u8g2.setFont(u8g2_font_5x7_tf);
-  dStr(50, 47, wxLabel(wthr.code));
+  dStr(50, 47, WeatherService::label(wthr.code));
 
   u8g2.setFont(u8g2_font_4x6_tr);
   snprintf(buf, sizeof(buf), "H%d L%d", (int)lroundf(wthr.hiF), (int)lroundf(wthr.loF));

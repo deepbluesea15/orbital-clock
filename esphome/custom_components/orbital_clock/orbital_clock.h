@@ -11,6 +11,12 @@
 #include "sketch_adapters.h"
 
 namespace esphome {
+namespace http_request {
+class HttpRequestComponent;
+}
+}  // namespace esphome
+
+namespace esphome {
 namespace orbital_clock {
 
 class OrbitalClock : public Component {
@@ -25,6 +31,7 @@ class OrbitalClock : public Component {
   void set_timezone_select(select::Select *entity) { settings_.set_timezone_select(entity); }
   void set_city_text(text::Text *entity) { settings_.set_city_text(entity); }
   void set_time_source(time::RealTimeClock *source) { time_source_ = source; }
+  void set_http_request(http_request::HttpRequestComponent *request) { http_request_ = request; }
 
   void set_face(const std::string &value) { settings_.set_face(value, display_, weather_); }
   void set_time_format(const std::string &value) { settings_.set_time_format(value, display_, weather_); }
@@ -38,6 +45,7 @@ class OrbitalClock : public Component {
   SketchDisplayEngine display_;
   SketchWeatherService weather_;
   time::RealTimeClock *time_source_{nullptr};
+  http_request::HttpRequestComponent *http_request_{nullptr};
 };
 
 }  // namespace orbital_clock

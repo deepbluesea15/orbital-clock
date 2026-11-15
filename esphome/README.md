@@ -9,16 +9,22 @@ license is in the project root.
 
 ### Time Synchronization
 The clock now uses ESPHome's built-in SNTP time component instead of managing
-NTP internally. This provides:
-- Reliable automatic time synchronization via ESPHome's time component
-- Integration with Home Assistant for timezone support
-- Simpler, more maintainable code
+NTP internally. `TimeService` reads ESPHome's local `ESPTime`, and location-based
+timezone changes use ESPHome's POSIX timezone rules. ESPHome does not include a
+runtime IANA timezone database, so the component retains mappings for the
+timezone choices and geocoding results it supports.
 
 ### Network Status
 Network queries (`WiFi.status()`, `WiFi.RSSI()`, `WiFi.channel()`) have been
 consolidated into a `NetworkStatus` adapter class that wraps ESPHome's Wi-Fi
 component. This decouples the display faces from Arduino WiFi APIs and makes
 testing easier.
+
+### Weather
+Weather requests use ESPHome's `http_request` component, JSON utilities, and
+global preferences for the location cache. Network I/O stays on a background
+task so slow requests do not block display updates; shared weather and location
+state is protected while it is read or updated.
 
 ### Configuration
 
@@ -92,9 +98,8 @@ Fill in the secrets file, then validate and build/flash:
 & .\.venv\Scripts\esphome.exe run esphome/orbital-clock.yaml
 ```
 
-The refactored codebase compiles successfully to ~1.1MB, using 63.2% of Flash and 
-33.7% of RAM on the ESP32-S3. `esphome run` builds and flashes over USB on first 
-install, then can use OTA for subsequent updates.
+`esphome run` builds and flashes over USB on first install, then can use OTA for
+subsequent updates.
 
 ## Refactoring Summary
 
@@ -107,13 +112,14 @@ from Arduino sketch-based time/Wi-Fi management to ESPHome component integration
 - ✅ Integrated ESPHome's SNTP time component for reliable synchronization
 - ✅ Created NetworkStatus adapter to wrap ESPHome's Wi-Fi component
 - ✅ Updated all clock faces to use NetworkStatus and TimeService adapters
-- ✅ Consolidated global state (WxData, Cfg) in WeatherService
-- ✅ Successfully compiled to firmware without errors or warnings
+- ✅ Uses ESPHome HTTP, JSON, preferences, SNTP, and Wi-Fi functionality
+- ✅ Protects weather data shared between rendering and background refresh
+- ✅ Successfully compiles to firmware
 - ✅ Updated .gitignore to exclude Python temporary folders
 
 ### Architecture Improvements
 - **Separation of concerns**: Time, weather, and network logic moved to focused helper classes
-- **Reduced complexity**: Removed ~500 lines of setup portal code and embedded timezone tables
+- **Reduced complexity**: Removed ~500 lines of setup portal code; centralized supported timezone mappings
 - **Better testability**: NetworkStatus and TimeService are stateless adapters
 - **ESPHome integration**: Leverages built-in components instead of duplicate implementations
-- **Consistent state**: All configuration persisted through WeatherService and ESPHome entities
+- **Consistent state**: Settings restore through ESPHome entities; the location cache uses ESPHome preferences

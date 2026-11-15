@@ -56,7 +56,6 @@
 #include "network_status.h"
 #include "starfield.h"
 #include "time_service.h"
-#include "timezone_resolver.h"
 #include "weather_service.h"
 
 bool use24h = false;
@@ -77,21 +76,7 @@ U8G2_SSD1309_128X64_NONAME0_F_4W_HW_SPI u8g2(U8G2_R0, PIN_CS, PIN_DC, PIN_RST);
 
 extern const int W = 128, H = 64;
 static const uint16_t FRAME_MS = 40;
-
-struct tm tnow;
-static uint32_t second_mark_ms = 0;
-
-int hour12(int hour) {
-  if (hour == 0) return 12;
-  if (hour > 12) return hour - 12;
-  return hour;
-}
-
-float subSecond() {
-  uint32_t now_ms = millis();
-  uint32_t ms_into_second = (now_ms - second_mark_ms) % 1000;
-  return ms_into_second / 1000.0f;
-}
+const struct tm &tnow = TimeService::now();
 
 static const char *FACE_NAMES[FACE_COUNT] = {
   "NEON", "DIGITAL", "ANALOG", "FLIPCLOCK", "WORDCLOCK",
@@ -155,33 +140,6 @@ static void drawFaceLabel() {
   u8g2.drawStr(x, 59, n);
 }
 
-// WMO weather code -> icon id + label
-uint8_t wxIcon(int c) {
-  if (c == 0) return IC_SUN;
-  if (c <= 2)  return IC_PARTLY;
-  if (c == 3)  return IC_CLOUD;
-  if (c <= 48) return IC_FOG;
-  if (c <= 57) return IC_RAIN;
-  if (c <= 67) return IC_RAIN;
-  if (c <= 77) return IC_SNOW;
-  if (c <= 82) return IC_RAIN;
-  if (c <= 86) return IC_SNOW;
-  return IC_STORM;
-}
-
-const char *wxLabel(int c) {
-  if (c == 0)  return "CLEAR";
-  if (c <= 2)  return "PARTLY CLOUDY";
-  if (c == 3)  return "OVERCAST";
-  if (c <= 48) return "FOG";
-  if (c <= 57) return "DRIZZLE";
-  if (c <= 67) return "RAIN";
-  if (c <= 77) return "SNOW";
-  if (c <= 82) return "SHOWERS";
-  if (c <= 86) return "SNOW SHOWERS";
-  return "THUNDERSTORM";
-}
-
 const char *linkStr() {
   if (!NetworkStatus::is_connected()) return "NO LINK";
   return TimeService::is_valid() ? "NET LOCK" : "SYNCING";
@@ -189,15 +147,6 @@ const char *linkStr() {
 
 const char *cityLabel() {
   return WeatherService::city_label();
-}
-
-void wxDrawCloud(int cx, int cy, int size) {
-  // Simple cloud outline
-  int r = size / 2;
-  u8g2.drawCircle(cx - r, cy - r/2, r);
-  u8g2.drawCircle(cx, cy - r - 2, r);
-  u8g2.drawCircle(cx + r, cy - r/2, r);
-  u8g2.drawBox(cx - r - 2, cy, 2*r + 4, r);
 }
 
 // Adapter functions for sketch compatibility and ESPHome lambda access
@@ -297,7 +246,10 @@ void ClockRuntime::loop() {
   if (millis() - lastFrame < FRAME_MS) return;
   lastFrame = millis();
 
-  TimeService::tick();
+  {
+    esphome::LockGuard lock(WeatherService::state_mutex());
+    TimeService::tick();
+  }
 
   if (ANTI_BURNIN && millis() - lastDrift > 60000) {
     lastDrift = millis();
@@ -307,19 +259,22 @@ void ClockRuntime::loop() {
 
   static int lastBright = -1;
   const struct tm &now = TimeService::now();
-  
-  // Update global tnow for faces
-  // Track when seconds change for smooth sub-second animation
-  if (now.tm_sec != tnow.tm_sec) {
-    second_mark_ms = millis();
-  }
-  tnow = now;
-  
   int want = (now.tm_hour >= 22 || now.tm_hour < 7) ? BRIGHT_NIGHT : BRIGHT_DAY;
   if (want != lastBright) { lastBright = want; u8g2.setContrast(want); }
 
   starfield.step();
   u8g2.clearBuffer();
+
+  if (!TimeService::is_valid()) {
+    u8g2.setFont(u8g2_font_6x10_tf);
+    const char *message = "WAITING FOR TIME";
+    u8g2.drawStr((W - u8g2.getStrWidth(message)) / 2, 30, message);
+    u8g2.setFont(u8g2_font_4x6_tr);
+    const char *status = NetworkStatus::is_connected() ? "SYNCING WITH SNTP" : "NO NETWORK";
+    u8g2.drawStr((W - u8g2.getStrWidth(status)) / 2, 42, status);
+    u8g2.sendBuffer();
+    return;
+  }
 
   if (face == FACE_NEON || face == FACE_ORRERY || face == FACE_ORBIT ||
       face == FACE_TESSERACT) starfield.draw(u8g2, H);

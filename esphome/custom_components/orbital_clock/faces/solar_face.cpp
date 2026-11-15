@@ -61,7 +61,8 @@ void SolarFace::draw() {
 
   double frac = (double)(nowT - rise) / (double)(set - rise);
   bool day = (frac >= 0.0 && frac <= 1.0);
-  if (frac < 0) frac = 0; if (frac > 1) frac = 1;
+  if (frac < 0) frac = 0;
+  if (frac > 1) frac = 1;
 
   float a = (180.0f + 180.0f * (float)frac) * 0.01745329f;
   int sx = cx + (int)(rx * cosf(a)), sy = cy + (int)(ry * sinf(a));
@@ -78,8 +79,8 @@ void SolarFace::draw() {
   }
 
   struct tm rt, st;
-  localtime_r(&rise, &rt);
-  localtime_r(&set, &st);
+  rt = TimeService::to_local(rise);
+  st = TimeService::to_local(set);
   int rh = use24h ? rt.tm_hour : hour12(rt.tm_hour);
   int sh = use24h ? st.tm_hour : hour12(st.tm_hour);
 

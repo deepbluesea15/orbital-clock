@@ -1,6 +1,7 @@
 #include "orbital_clock.h"
 
 #include "time_service.h"
+#include "weather_service.h"
 
 namespace esphome {
 namespace orbital_clock {
@@ -12,6 +13,7 @@ void OrbitalClock::setup() {
 	if (this->time_source_ != nullptr) {
 		TimeService::set_source(this->time_source_);
 	}
+	::WeatherService::set_http_request(this->http_request_);
 	this->display_.setup();
 	this->settings_.restore(this->display_, this->weather_);
 }

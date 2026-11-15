@@ -1,8 +1,7 @@
 #include "time_service.h"
 
 #include <Arduino.h>
-#include <stdlib.h>
-
+#include "esphome/core/time.h"
 #include "esphome/components/time/real_time_clock.h"
 
 esphome::time::RealTimeClock *TimeService::source_ = nullptr;
@@ -11,32 +10,23 @@ bool TimeService::valid_ = false;
 uint8_t TimeService::last_second_ = 61;
 uint32_t TimeService::second_mark_ = 0;
 
-void TimeService::initialize() {
-  // ESPHome's time component will be available after setup
-  // Try to find it via the global time sync time function
-  if (TimeService::source_ == nullptr) {
-    // The time component should be discoverable via esphome's component registry
-    // For now, we'll rely on set_source() being called by OrbitalClock::setup()
-  }
-}
-
 void TimeService::set_source(esphome::time::RealTimeClock *source) {
   TimeService::source_ = source;
-}
-
-void TimeService::set_timezone(const char *timezone) {
-  setenv("TZ", timezone, 1);
-  tzset();
 }
 
 void TimeService::tick() {
   if (TimeService::source_ == nullptr) {
     TimeService::valid_ = false;
+    TimeService::now_ = {};
     return;
   }
-  time_t raw = TimeService::source_->timestamp_now();
-  TimeService::valid_ = raw > 1700000000;
-  localtime_r(&raw, &TimeService::now_);
+  esphome::ESPTime current = TimeService::source_->now();
+  TimeService::valid_ = current.is_valid();
+  if (!TimeService::valid_) {
+    TimeService::now_ = {};
+    return;
+  }
+  TimeService::now_ = current.to_c_tm();
   if (TimeService::now_.tm_sec != TimeService::last_second_) {
     TimeService::last_second_ = TimeService::now_.tm_sec;
     TimeService::second_mark_ = millis();
@@ -63,3 +53,8 @@ int TimeService::hour12(int hour) {
 bool TimeService::is_valid() { return TimeService::valid_; }
 
 const struct tm &TimeService::now() { return TimeService::now_; }
+
+struct tm TimeService::to_local(time_t timestamp) {
+  esphome::ESPTime local = esphome::ESPTime::from_epoch_local(timestamp);
+  return local.to_c_tm();
+}

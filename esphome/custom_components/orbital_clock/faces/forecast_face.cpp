@@ -1,5 +1,7 @@
 #include "forecast_face.h"
 #include "esphome/components/orbital_clock/clock_face_context.h"
+#include "esphome/components/orbital_clock/weather_service.h"
+#include "esphome/components/orbital_clock/weather_icons.h"
 
 // ------------------------- FACE: FORECAST -----------------------------------
 // Compact, static versions of the weather glyphs -- five animating icons at
@@ -74,7 +76,7 @@ void ForecastFace::draw() {
     const char *d = (i == 0) ? "TODAY" : DOW[(tnow.tm_wday + i) % 7];
     dStr(cx[i] - strW(d) / 2, 20, d);
 
-    wxIconSmall(wxIcon(wthr.fcCode[i]), cx[i], 34);
+    wxIconSmall(WeatherService::icon(wthr.fcCode[i]), cx[i], 34);
 
     u8g2.setFont(u8g2_font_5x7_tf);
     snprintf(buf, sizeof(buf), "%d", (int)lroundf(wthr.fcHi[i]));

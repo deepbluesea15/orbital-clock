@@ -1,5 +1,6 @@
 #include "clock_faces.h"
 #include "esphome/components/orbital_clock/clock_face_context.h"
+#include "esphome/components/orbital_clock/weather_service.h"
 
 void ClockFaces::initialize() {
   TerminalFace::initialize();
@@ -12,6 +13,7 @@ void ClockFaces::boot_line(const char *text, uint16_t hold) {
 }
 
 void ClockFaces::draw(uint8_t face) {
+  esphome::LockGuard lock(WeatherService::state_mutex());
   switch (face) {
     case FACE_NEON:      { static NeonFace f; f.draw(); break; }
     case FACE_DIGITAL:   { static DigitalFace f; f.draw(); break; }

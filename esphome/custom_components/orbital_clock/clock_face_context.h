@@ -1,7 +1,6 @@
 #pragma once
 
 #include <Arduino.h>
-#include <WiFi.h>
 #include <U8g2lib.h>
 #include <time.h>
 #include "time_service.h"
@@ -9,14 +8,14 @@
 #define CALLSIGN "NX-01"
 
 struct Cfg {
-  String ssid, pass, city, tz;
+  String city, tz, cached_city, cached_timezone;
   float lat = 0, lon = 0;
   bool haveLoc = false;
   bool metric = true;
 };
 
 struct WxData {
-  volatile bool valid = false;
+  bool valid = false;
   float tempF = 0, feelF = 0, hiF = 0, loF = 0, wind = 0, hum = 0;
   int code = 0, isDay = 1;
   float fcHi[5], fcLo[5];
@@ -30,25 +29,21 @@ extern U8G2_SSD1309_128X64_NONAME0_F_4W_HW_SPI u8g2;
 extern const int W;
 extern const int H;
 extern bool use24h;
-extern struct tm tnow;
-extern bool timeValid;
+extern const struct tm &tnow;
 extern uint32_t bootMillis;
 extern int gOfsX;
 extern int gOfsY;
 extern Cfg cfg;
-extern WxData &wthr;
+extern const WxData &wthr;
 extern const char *DOW[7];
 extern const char *MON[12];
 enum WxIcon : uint8_t { IC_SUN, IC_PARTLY, IC_CLOUD, IC_FOG, IC_RAIN, IC_SNOW, IC_STORM };
 
-float subSecond();
-int hour12(int hour);
+inline float subSecond() { return TimeService::sub_second(); }
+inline int hour12(int hour) { return TimeService::hour12(hour); }
 inline float stardate() { return TimeService::stardate(); }
 const char *linkStr();
 const char *cityLabel();
-uint8_t wxIcon(int code);
-const char *wxLabel(int code);
-void wxDrawCloud(int cx, int cy, int size);
 
 inline void dPixel(int x, int y) { u8g2.drawPixel(x + gOfsX, y + gOfsY); }
 inline void dStr(int x, int y, const char *text) { u8g2.drawStr(x + gOfsX, y + gOfsY, text); }

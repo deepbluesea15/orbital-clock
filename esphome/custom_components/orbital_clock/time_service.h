@@ -10,15 +10,14 @@ class RealTimeClock;
 
 class TimeService {
  public:
-  static void initialize();
   static void set_source(esphome::time::RealTimeClock *source);
-  static void set_timezone(const char *timezone);
   static void tick();
   static float sub_second();
   static float stardate();
   static int hour12(int hour);
   static bool is_valid();
   static const struct tm &now();
+  static struct tm to_local(time_t timestamp);
 
  private:
   static esphome::time::RealTimeClock *source_;

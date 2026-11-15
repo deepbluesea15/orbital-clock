@@ -4,15 +4,8 @@ esphome:
   includes:
     - custom_components/orbital_clock/faces
   libraries:
-    - AsyncUDP
-    - DNSServer
-    - HTTPClient
-    - Preferences
     - SPI
-    - WebServer
     - Wire
-    - WiFi
-    - NetworkClientSecure
     - olikraus/U8g2@^2.36.17
 
 esp32:
@@ -176,6 +169,11 @@ time:
       - pool.ntp.org
       - time.nist.gov
 
+http_request:
+  id: weather_http
+  timeout: 10s
+  verify_ssl: true
+
 orbital_clock:
   id: clock_controller
   face_select: orbital_face
@@ -183,3 +181,4 @@ orbital_clock:
   units_select: orbital_units
   timezone_select: orbital_timezone
   city_text: orbital_city
+  http_request_id: weather_http
